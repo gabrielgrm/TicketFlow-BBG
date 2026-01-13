@@ -119,7 +119,10 @@ export default function TicketsPage() {
     return <Badge className={className}>{label}</Badge>;
   };
 
-  const getPriorityBadge = (priority: TicketPriority) => {
+  const getPriorityBadge = (priority: TicketPriority | null) => {
+    if (!priority) {
+      return <Badge className="bg-gray-300 text-gray-700">Indefinida</Badge>;
+    }
     const variants: Record<TicketPriority, { label: string; className: string }> = {
       LOW: { label: "Baixa", className: "bg-gray-500 text-white" },
       MEDIUM: { label: "Média", className: "bg-purple-500 text-white" },

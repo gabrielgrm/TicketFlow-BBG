@@ -50,14 +50,10 @@ export default function NewTicketPage() {
     setIsLoading(true);
 
     try {
-      const payload: { title: string; description: string; priority?: TicketPriority } = {
+      const payload: { title: string; description: string } = {
         title,
         description,
       };
-      // CLIENT não envia prioridade; TECH pode enviar
-      if (user?.role === "TECH" || user?.role === "SUPERVISOR") {
-        payload.priority = priority;
-      }
       await ticketService.createTicket(payload);
       toast({
         title: "Ticket criado com sucesso!",
@@ -138,25 +134,6 @@ export default function NewTicketPage() {
                   disabled={isLoading}
                   rows={6}
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority">Prioridade</Label>
-                <Select
-                  value={priority}
-                  onValueChange={(value) => setPriority(value as TicketPriority)}
-                  disabled={isLoading || user?.role === "CLIENT"}
-                >
-                  <SelectTrigger id="priority">
-                    <SelectValue placeholder="Selecione a prioridade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LOW">Baixa</SelectItem>
-                    <SelectItem value="MEDIUM">Média</SelectItem>
-                    <SelectItem value="HIGH">Alta</SelectItem>
-                    <SelectItem value="URGENT">Urgente</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="flex gap-4">
