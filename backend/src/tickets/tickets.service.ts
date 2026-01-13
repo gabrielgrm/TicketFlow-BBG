@@ -27,7 +27,7 @@ const ticketInclude = {
   },
 } as const;
 
-interface PaginatedResponse<T> {
+export interface PaginatedResponse<T> {
   data: T[];
   meta: {
     page: number;

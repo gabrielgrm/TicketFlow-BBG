@@ -17,7 +17,7 @@ import { ticketService } from "@/lib/tickets";
 import { usersService } from "@/lib/users";
 import { ApiError } from "@/lib/api";
 import { Ticket, User, TicketStatus, TicketPriority } from "@/types";
-import { ArrowLeft, Trash2, Send } from "lucide-react";
+import { ArrowLeft, Trash2, Send, Pencil, Check, X } from "lucide-react";
 
 export default function TicketDetailPage() {
   const [ticket, setTicket] = useState<Ticket | null>(null);
@@ -30,6 +30,7 @@ export default function TicketDetailPage() {
   const [editedStatus, setEditedStatus] = useState<TicketStatus>("OPEN");
   const [editedPriority, setEditedPriority] = useState<TicketPriority>("MEDIUM");
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingBasicFields, setIsEditingBasicFields] = useState(false);
   const [technicians, setTechnicians] = useState<{ id: string; name: string; email: string }[]>([]);
   const [editedAssignedTo, setEditedAssignedTo] = useState<string | "none">("none");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -257,16 +258,28 @@ export default function TicketDetailPage() {
         <div className="grid gap-6">
           <Card>
             <CardHeader className="flex flex-row items-start justify-between space-y-0">
-              <div className="space-y-2">
-                {canEditBasicFields() ? (
-                  <Input
-                    value={editedTitle}
-                    onChange={(e) => setEditedTitle(e.target.value)}
-                    disabled={!canEdit() || isEditing}
-                  />
-                ) : (
-                  <CardTitle className="text-2xl">{ticket.title}</CardTitle>
-                )}
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2">
+                  {isEditingBasicFields && user?.role === "TECH" ? (
+                    <Input
+                      value={editedTitle}
+                      onChange={(e) => setEditedTitle(e.target.value)}
+                      className="text-2xl font-bold"
+                      disabled={isEditing}
+                    />
+                  ) : (
+                    <CardTitle className="text-2xl">{ticket.title}</CardTitle>
+                  )}
+                  {user?.role === "TECH" && canEditBasicFields() && !isEditingBasicFields && (
+                    <button
+                      onClick={() => setIsEditingBasicFields(true)}
+                      className="p-2 hover:bg-gray-100 rounded transition-colors"
+                      title="Editar título"
+                    >
+                      <Pencil className="h-4 w-4 text-gray-600" />
+                    </button>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   {getStatusBadge(ticket.status)}
                   {user.role === "TECH" && getPriorityBadge(ticket.priority)}
@@ -302,11 +315,11 @@ export default function TicketDetailPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Descrição</Label>
-                  {user.role === "TECH" && canEditBasicFields() ? (
+                  {isEditingBasicFields && user?.role === "TECH" ? (
                     <Textarea
                       value={editedDescription}
                       onChange={(e) => setEditedDescription(e.target.value)}
-                      disabled={!canEdit() || isEditing}
+                      disabled={isEditing}
                       rows={4}
                       className="mt-2"
                     />
@@ -392,13 +405,28 @@ export default function TicketDetailPage() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {canEdit() && (
-                      <Button onClick={handleUpdate} disabled={isEditing}>
-                        {isEditing ? "Salvando..." : "Salvar Alterações"}
-                      </Button>
-                    )}
                   </>
+                )}
+
+                {isEditingBasicFields && user?.role === "TECH" && (
+                  <div className="flex gap-2 pt-2 border-t">
+                    <Button 
+                      onClick={handleUpdate} 
+                      disabled={isEditing}
+                      variant="default"
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      {isEditing ? "Salvando..." : "Salvar"}
+                    </Button>
+                    <Button 
+                      onClick={() => setIsEditingBasicFields(false)} 
+                      disabled={isEditing}
+                      variant="outline"
+                    >
+                      <X className="mr-2 h-4 w-4" />
+                      Cancelar
+                    </Button>
+                  </div>
                 )}
 
                 <div className="text-xs text-muted-foreground">
