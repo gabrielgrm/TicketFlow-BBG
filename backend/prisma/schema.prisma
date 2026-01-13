@@ -1,0 +1,95 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CLIENT
+  TECH
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+}
+
+enum TicketPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         UserRole @default(CLIENT)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  createdTickets  Ticket[]  @relation("CreatedByUser")
+  assignedTickets Ticket[]  @relation("AssignedToUser")
+  comments        Comment[]
+
+  @@index([role])
+}
+
+model Ticket {
+  id          String @id @default(cuid())
+  title       String
+  description String
+
+  status   TicketStatus   @default(OPEN)
+  priority TicketPriority @default(MEDIUM)
+
+  createdById  String
+  assignedToId String?
+
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  // Relations
+  createdBy  User      @relation("CreatedByUser", fields: [createdById], references: [id], onDelete: Cascade)
+  assignedTo User?     @relation("AssignedToUser", fields: [assignedToId], references: [id], onDelete: SetNull)
+  comments   Comment[]
+
+  // Índices para performance
+  @@index([createdAt])
+  @@index([status])
+  @@index([priority])
+  @@index([status, priority])
+  @@index([createdById])
+  @@index([assignedToId])
+}
+
+model Comment {
+  id      String @id @default(cuid())
+  content String
+
+  ticketId String
+  userId   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@index([userId])
+  @@index([createdAt])
+}
