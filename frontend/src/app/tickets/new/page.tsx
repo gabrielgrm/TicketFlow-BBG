@@ -1,35 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { authService } from "@/lib/auth";
 import { ticketService } from "@/lib/tickets";
 import { ApiError } from "@/lib/api";
-import { TicketPriority, User } from "@/types";
+import { User } from "@/types";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function NewTicketPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<TicketPriority>("MEDIUM");
   const [isLoading, setIsLoading] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     if (!authService.isAuthenticated()) {
       router.push("/login");
       return;
@@ -43,7 +37,11 @@ export default function NewTicketPage() {
         authService.logout();
       }
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,8 +83,8 @@ export default function NewTicketPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-white dark:bg-card border-b">
         <div className="container mx-auto px-4 py-4">
           <h1 className="text-2xl font-bold">TicketFlow</h1>
         </div>

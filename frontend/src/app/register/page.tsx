@@ -11,13 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { authService } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { ApiError } from "@/lib/api";
-import { UserRole } from "@/types";
 
 export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
-  const [role, setRole] = useState<UserRole>("CLIENT");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
@@ -27,7 +25,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await authService.register({ email, password, name, role });
+      await authService.register({ email, password, name, role: "CLIENT" });
       toast({
         title: "Cadastro realizado com sucesso!",
         description: "Você será redirecionado...",
@@ -53,7 +51,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">TicketFlow</CardTitle>
@@ -98,18 +96,6 @@ export default function RegisterPage() {
                 required
                 disabled={isLoading}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role">Tipo de Usuário</Label>
-              <Select value={role} onValueChange={(value) => setRole(value as UserRole)} disabled={isLoading}>
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Selecione o tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="CLIENT">Cliente</SelectItem>
-                  <SelectItem value="TECH">Técnico</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

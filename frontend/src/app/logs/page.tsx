@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -27,17 +27,7 @@ export default function LogsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      loadLogs();
-    }
-  }, [user, page, actionFilter, entityTypeFilter]);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     if (!authService.isAuthenticated()) {
       router.replace("/login");
       return;
@@ -62,9 +52,13 @@ export default function LogsPage() {
       authService.logout();
       router.replace("/login");
     }
-  };
+  }, [router, toast]);
 
-  const loadLogs = async () => {
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  const loadLogs = useCallback(async () => {
     setIsLoading(true);
     try {
       const pageSize = 20;
@@ -93,7 +87,13 @@ export default function LogsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, actionFilter, entityTypeFilter, toast]);
+
+  useEffect(() => {
+    if (user) {
+      loadLogs();
+    }
+  }, [user, loadLogs]);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleString("pt-BR");
@@ -200,7 +200,7 @@ export default function LogsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white dark:bg-slate-950 border-b">
+      <header className="bg-white dark:bg-card border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">TicketFlow - Logs</h1>

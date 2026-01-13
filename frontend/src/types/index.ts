@@ -25,7 +25,7 @@ export interface Ticket {
   title: string;
   description: string;
   status: TicketStatus;
-  priority: TicketPriority;
+  priority: TicketPriority | null;
   createdById: string;
   createdBy: UserBasic;
   assignedToId: string | null;

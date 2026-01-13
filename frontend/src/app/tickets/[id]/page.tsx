@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ export default function TicketDetailPage() {
   const [editedTitle, setEditedTitle] = useState("");
   const [editedDescription, setEditedDescription] = useState("");
   const [editedStatus, setEditedStatus] = useState<TicketStatus>("OPEN");
-  const [editedPriority, setEditedPriority] = useState<TicketPriority>("MEDIUM");
+  const [editedPriority, setEditedPriority] = useState<TicketPriority | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingBasicFields, setIsEditingBasicFields] = useState(false);
   const [technicians, setTechnicians] = useState<{ id: string; name: string; email: string }[]>([]);
@@ -39,28 +39,7 @@ export default function TicketDetailPage() {
   const params = useParams();
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      loadTicket();
-      if (user.role === "TECH" || user.role === "SUPERVISOR") {
-        loadTechnicians();
-      }
-    }
-  }, [user, params.id]);
-
-  const loadTechnicians = async () => {
-    try {
-      const list = await usersService.getTechnicians();
-      setTechnicians(list);
-    } catch {
-    }
-  };
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     if (!authService.isAuthenticated()) {
       router.push("/login");
       return;
@@ -74,9 +53,21 @@ export default function TicketDetailPage() {
         authService.logout();
       }
     }
-  };
+  }, [router]);
 
-  const loadTicket = async () => {
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  const loadTechnicians = useCallback(async () => {
+    try {
+      const list = await usersService.getTechnicians();
+      setTechnicians(list);
+    } catch {
+    }
+  }, []);
+
+  const loadTicket = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await ticketService.getTicketById(params.id as string);
@@ -102,7 +93,17 @@ export default function TicketDetailPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [params.id, toast, router]);
+
+  useEffect(() => {
+    if (user) {
+      loadTicket();
+      if (user.role === "TECH" || user.role === "SUPERVISOR") {
+        loadTechnicians();
+      }
+    }
+  }, [user, loadTicket, loadTechnicians]);
+
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,7 +198,7 @@ export default function TicketDetailPage() {
       DONE: { label: "Concluído", className: "bg-green-500 text-white" },
     };
     const { label, className } = variants[status];
-    return <Badge className={className}>{label}</Badge>;
+    return <Badge className={`${className} whitespace-nowrap`}>{label}</Badge>;
   };
 
   const getPriorityBadge = (priority: TicketPriority | null) => {
@@ -242,7 +243,7 @@ export default function TicketDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white dark:bg-slate-950 border-b">
+      <header className="bg-white dark:bg-card border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">TicketFlow</h1>
           <ThemeToggle />
@@ -344,14 +345,9 @@ export default function TicketDetailPage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <Label className="text-sm font-medium">Técnico</Label>
-                      {!ticket.assignedTo && (user?.role === "TECH" || user?.role === "SUPERVISOR") && (
-                        <Badge className="bg-slate-900 text-white text-xs">
-                          Sem responsável
-                        </Badge>
-                      )}
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-2">
-                      <p className="text-sm text-muted-foreground flex-1">
+                      <p className={`text-sm flex-1 ${ticket.assignedTo ? "text-muted-foreground" : "text-red-500"}`}>
                         {ticket.assignedTo
                           ? `${ticket.assignedTo.name} • ${ticket.assignedTo.email}`
                           : "Não atribuído"}
@@ -436,7 +432,7 @@ export default function TicketDetailPage() {
                       <div className="space-y-2">
                         <Label htmlFor="priority">Prioridade</Label>
                         <Select
-                          value={editedPriority}
+                          value={editedPriority ?? undefined}
                           onValueChange={async (value) => {
                             const newPriority = value as TicketPriority;
                             setEditedPriority(newPriority);
@@ -462,7 +458,7 @@ export default function TicketDetailPage() {
                           disabled={!canEdit() || isEditing}
                         >
                           <SelectTrigger id="priority">
-                            <SelectValue />
+                            <SelectValue placeholder={editedPriority ? undefined : "Indefinida"} />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="LOW">Baixa</SelectItem>

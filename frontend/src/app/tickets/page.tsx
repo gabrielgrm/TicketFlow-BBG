@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -30,17 +30,7 @@ export default function TicketsPage() {
   const router = useRouter();
   const { toast } = useToast();
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      loadTickets();
-    }
-  }, [user, page, statusFilter, priorityFilter, search, showMyTickets]);
-
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     if (!authService.isAuthenticated()) {
       console.log("Token não encontrado, redirecionando para login");
       router.replace("/login");
@@ -68,9 +58,13 @@ export default function TicketsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [router, toast]);
 
-  const loadTickets = async () => {
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  const loadTickets = useCallback(async () => {
     setIsLoading(true);
     try {
       const pageSize = 10;
@@ -103,7 +97,14 @@ export default function TicketsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, statusFilter, priorityFilter, search, showMyTickets, user?.role, user?.id, toast]);
+
+  useEffect(() => {
+    if (user) {
+      loadTickets();
+    }
+  }, [user, loadTickets]);
+
 
   const handleSearch = () => {
     setPage(1);
@@ -117,7 +118,7 @@ export default function TicketsPage() {
       DONE: { label: "Concluído", className: "bg-green-500 text-white" },
     };
     const { label, className } = variants[status];
-    return <Badge className={className}>{label}</Badge>;
+    return <Badge className={`${className} whitespace-nowrap`}>{label}</Badge>;
   };
 
   const getPriorityBadge = (priority: TicketPriority | null) => {
@@ -144,7 +145,7 @@ export default function TicketsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white dark:bg-slate-950 border-b">
+      <header className="bg-white dark:bg-card border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">TicketFlow</h1>
@@ -154,11 +155,18 @@ export default function TicketsPage() {
           </div>
           <div className="flex gap-2">
             {user.role === "SUPERVISOR" && (
-              <Link href="/logs">
-                <Button variant="outline">
-                  Logs
-                </Button>
-              </Link>
+              <>
+                <Link href="/logs">
+                  <Button variant="outline">
+                    Logs
+                  </Button>
+                </Link>
+                <Link href="/users/new">
+                  <Button variant="outline">
+                    Novo Usuário
+                  </Button>
+                </Link>
+              </>
             )}
             <ThemeToggle />
             <Button variant="outline" onClick={() => authService.logout()}>
@@ -263,9 +271,11 @@ export default function TicketsPage() {
                         </TableCell>
                         {(user.role === "TECH" || user.role === "SUPERVISOR") && (
                           <TableCell>
-                            {ticket.assignedTo
-                              ? `${ticket.assignedTo.name} (${ticket.assignedTo.email})`
-                              : "Não atribuído"}
+                            {ticket.assignedTo ? (
+                              `${ticket.assignedTo.name} (${ticket.assignedTo.email})`
+                            ) : (
+                              <span className="text-red-500">Não atribuído</span>
+                            )}
                           </TableCell>
                         )}
                         <TableCell>{new Date(ticket.createdAt).toLocaleDateString("pt-BR")}</TableCell>
