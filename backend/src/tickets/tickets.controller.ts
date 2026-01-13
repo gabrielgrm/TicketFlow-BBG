@@ -28,7 +28,7 @@ export class TicketsController {
 
   @Post()
   async create(@Body() createTicketDto: CreateTicketDto, @Request() req: any) {
-    return this.ticketsService.create(createTicketDto, req.user.id);
+    return this.ticketsService.create(createTicketDto, req.user.id, req.user.role);
   }
 
   @Get()

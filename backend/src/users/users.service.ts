@@ -40,4 +40,16 @@ export class UsersService {
   async findAll(): Promise<User[]> {
     return this.prisma.user.findMany();
   }
+
+  async findTechnicians(): Promise<Pick<User, 'id' | 'name' | 'email' | 'role'>[]> {
+    return this.prisma.user.findMany({
+      where: { role: 'TECH' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+      },
+    });
+  }
 }

@@ -10,6 +10,23 @@ import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { ListTicketsDto } from './dto/list-tickets.dto';
 import { Ticket, TicketStatus, UserRole } from '@prisma/client';
 
+const baseUserSelect = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+} as const;
+
+const ticketInclude = {
+  createdBy: { select: baseUserSelect },
+  assignedTo: { select: baseUserSelect },
+  comments: {
+    include: {
+      user: { select: baseUserSelect },
+    },
+  },
+} as const;
+
 interface PaginatedResponse<T> {
   data: T[];
   meta: {
@@ -24,32 +41,37 @@ interface PaginatedResponse<T> {
 export class TicketsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createTicketDto: CreateTicketDto, userId: string): Promise<Ticket> {
+  async create(
+    createTicketDto: CreateTicketDto,
+    userId: string,
+    userRole: UserRole,
+  ): Promise<Ticket> {
+    const ticketData: any = {
+      title: createTicketDto.title,
+      description: createTicketDto.description,
+      createdById: userId,
+    };
+
+    // Only technicians can set priority or status on creation
+    if (userRole === UserRole.TECH) {
+      if (createTicketDto.priority) {
+        ticketData.priority = createTicketDto.priority;
+      }
+      if (createTicketDto.status) {
+        ticketData.status = createTicketDto.status;
+      }
+    }
+
     return this.prisma.ticket.create({
-      data: {
-        ...createTicketDto,
-        createdById: userId,
-      },
-      include: {
-        createdBy: true,
-        assignedTo: true,
-        comments: true,
-      },
+      data: ticketData,
+      include: ticketInclude,
     });
   }
 
   async findById(id: string, userId: string, userRole: UserRole): Promise<Ticket> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
-      include: {
-        createdBy: true,
-        assignedTo: true,
-        comments: {
-          include: {
-            user: true,
-          },
-        },
-      },
+      include: ticketInclude,
     });
 
     if (!ticket) {
@@ -107,8 +129,8 @@ export class TicketsService {
         skip,
         take: limit,
         include: {
-          createdBy: true,
-          assignedTo: true,
+          createdBy: { select: baseUserSelect },
+          assignedTo: { select: baseUserSelect },
         },
         orderBy: {
           createdAt: 'desc',
@@ -157,16 +179,25 @@ export class TicketsService {
       return this.prisma.ticket.update({
         where: { id },
         data: { title, description },
-        include: {
-          createdBy: true,
-          assignedTo: true,
-          comments: true,
-        },
+        include: ticketInclude,
       });
     }
 
     // TECH can edit everything
     const updateData: any = { ...updateTicketDto };
+
+    // Ensure assignee exists and is a TECH if provided
+    if (updateTicketDto.assignedToId) {
+      const assignee = await this.prisma.user.findUnique({ where: { id: updateTicketDto.assignedToId } });
+
+      if (!assignee) {
+        throw new NotFoundException('Assigned user not found');
+      }
+
+      if (assignee.role !== UserRole.TECH) {
+        throw new ForbiddenException('Only TECH users can be assigned to tickets');
+      }
+    }
 
     // Handle resolvedAt based on status change
     if (updateTicketDto.status) {
@@ -180,11 +211,7 @@ export class TicketsService {
     return this.prisma.ticket.update({
       where: { id },
       data: updateData,
-      include: {
-        createdBy: true,
-        assignedTo: true,
-        comments: true,
-      },
+      include: ticketInclude,
     });
   }
 
