@@ -1,4 +1,4 @@
-export type UserRole = 'CLIENT' | 'TECH';
+export type UserRole = 'CLIENT' | 'TECH' | 'SUPERVISOR';
 
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'DONE';
 
@@ -101,4 +101,25 @@ export interface TicketFilters {
   status?: TicketStatus | '';
   priority?: TicketPriority | '';
   search?: string;
+  assignedToId?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  changes?: any;
+  user: UserBasic;
+  createdAt: string;
+  metadata?: any;
+}
+
+export interface LogFilters {
+  page?: number;
+  limit?: number;
+  action?: string;
+  entityType?: string;
+  entityId?: string;
+  userId?: string;
 }

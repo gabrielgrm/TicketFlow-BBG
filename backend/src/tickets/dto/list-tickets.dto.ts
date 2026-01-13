@@ -26,4 +26,8 @@ export class ListTicketsDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @IsString()
+  assignedToId?: string;
 }

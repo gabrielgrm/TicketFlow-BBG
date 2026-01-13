@@ -23,6 +23,7 @@ export default function TicketsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TicketStatus | "">("");
   const [priorityFilter, setPriorityFilter] = useState<TicketPriority | "">("");
+  const [showMyTickets, setShowMyTickets] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function TicketsPage() {
     if (user) {
       loadTickets();
     }
-  }, [user, page, statusFilter, priorityFilter, search]);
+  }, [user, page, statusFilter, priorityFilter, search, showMyTickets]);
 
   const checkAuth = async () => {
     if (!authService.isAuthenticated()) {
@@ -72,13 +73,19 @@ export default function TicketsPage() {
     setIsLoading(true);
     try {
       const pageSize = 10;
-      const response = await ticketService.getTickets({
+      const filters: any = {
         page,
         limit: pageSize,
         status: statusFilter,
         priority: priorityFilter,
         search,
-      });
+      };
+      
+      if (showMyTickets && (user?.role === "TECH" || user?.role === "SUPERVISOR")) {
+        filters.assignedToId = user.id;
+      }
+      
+      const response = await ticketService.getTickets(filters);
       setTickets(response.data);
       setTotalPages(response.meta.totalPages);
     } catch (error) {
@@ -115,7 +122,7 @@ export default function TicketsPage() {
   const getPriorityBadge = (priority: TicketPriority) => {
     const variants: Record<TicketPriority, { label: string; className: string }> = {
       LOW: { label: "Baixa", className: "bg-gray-500 text-white" },
-      MEDIUM: { label: "Média", className: "bg-blue-500 text-white" },
+      MEDIUM: { label: "Média", className: "bg-purple-500 text-white" },
       HIGH: { label: "Alta", className: "bg-orange-500 text-white" },
       URGENT: { label: "Urgente", className: "bg-red-500 text-white" },
     };
@@ -138,13 +145,22 @@ export default function TicketsPage() {
           <div>
             <h1 className="text-2xl font-bold">TicketFlow</h1>
             <p className="text-sm text-muted-foreground">
-              Olá, {user.name} ({user.role === "CLIENT" ? "Cliente" : "Técnico"})
+              Olá, {user.name} ({user.role === "CLIENT" ? "Cliente" : user.role === "SUPERVISOR" ? "Supervisor" : "Técnico"})
             </p>
           </div>
-          <Button variant="outline" onClick={() => authService.logout()}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sair
-          </Button>
+          <div className="flex gap-2">
+            {user.role === "SUPERVISOR" && (
+              <Link href="/logs">
+                <Button variant="outline">
+                  Logs
+                </Button>
+              </Link>
+            )}
+            <Button variant="outline" onClick={() => authService.logout()}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -152,12 +168,22 @@ export default function TicketsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Tickets</CardTitle>
-            <Link href="/tickets/new">
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Ticket
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              {(user?.role === "TECH" || user?.role === "SUPERVISOR") && (
+                <Button
+                  variant={showMyTickets ? "default" : "outline"}
+                  onClick={() => setShowMyTickets(!showMyTickets)}
+                >
+                  {showMyTickets ? "Todos os Tickets" : "Meus Tickets"}
+                </Button>
+              )}
+              <Link href="/tickets/new">
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Novo Ticket
+                </Button>
+              </Link>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -210,9 +236,9 @@ export default function TicketsPage() {
                     <TableRow>
                       <TableHead>Título</TableHead>
                       <TableHead>Status</TableHead>
-                      {user.role === "TECH" && <TableHead>Prioridade</TableHead>}
+                      {(user.role === "TECH" || user.role === "SUPERVISOR") && <TableHead>Prioridade</TableHead>}
                       <TableHead>Criado por</TableHead>
-                      {user.role === "TECH" && <TableHead>Atribuído a</TableHead>}
+                      {(user.role === "TECH" || user.role === "SUPERVISOR") && <TableHead>Atribuído a</TableHead>}
                       <TableHead>Criado em</TableHead>
                       <TableHead>Ações</TableHead>
                     </TableRow>
@@ -222,13 +248,13 @@ export default function TicketsPage() {
                       <TableRow key={ticket.id}>
                         <TableCell className="font-medium">{ticket.title}</TableCell>
                         <TableCell>{getStatusBadge(ticket.status)}</TableCell>
-                        {user.role === "TECH" && (
+                        {(user.role === "TECH" || user.role === "SUPERVISOR") && (
                           <TableCell>{getPriorityBadge(ticket.priority)}</TableCell>
                         )}
                         <TableCell>
                           {`${ticket.createdBy.name} (${ticket.createdBy.email})`}
                         </TableCell>
-                        {user.role === "TECH" && (
+                        {(user.role === "TECH" || user.role === "SUPERVISOR") && (
                           <TableCell>
                             {ticket.assignedTo
                               ? `${ticket.assignedTo.name} (${ticket.assignedTo.email})`

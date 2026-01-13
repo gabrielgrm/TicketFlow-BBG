@@ -45,7 +45,7 @@ export default function TicketDetailPage() {
   useEffect(() => {
     if (user) {
       loadTicket();
-      if (user.role === "TECH") {
+      if (user.role === "TECH" || user.role === "SUPERVISOR") {
         loadTechnicians();
       }
     }
@@ -56,7 +56,6 @@ export default function TicketDetailPage() {
       const list = await usersService.getTechnicians();
       setTechnicians(list);
     } catch {
-      // silenciosamente ignora; UI ainda funciona sem atribuição
     }
   };
 
@@ -141,7 +140,7 @@ export default function TicketDetailPage() {
         title: editedTitle,
         description: editedDescription,
       };
-      if (user?.role === "TECH") {
+      if (user?.role === "TECH" || user?.role === "SUPERVISOR") {
         payload.status = editedStatus;
         payload.priority = editedPriority;
         payload.assignedToId = editedAssignedTo === "none" ? null : editedAssignedTo;
@@ -203,7 +202,7 @@ export default function TicketDetailPage() {
   const getPriorityBadge = (priority: TicketPriority) => {
     const variants: Record<TicketPriority, { label: string; className: string }> = {
       LOW: { label: "Baixa", className: "bg-gray-500 text-white" },
-      MEDIUM: { label: "Média", className: "bg-blue-500 text-white" },
+      MEDIUM: { label: "Média", className: "bg-purple-500 text-white" },
       HIGH: { label: "Alta", className: "bg-orange-500 text-white" },
       URGENT: { label: "Urgente", className: "bg-red-500 text-white" },
     };
@@ -226,7 +225,7 @@ export default function TicketDetailPage() {
   // Advanced fields: status/priority/assignment for TECH only
   const canEditAdvancedFields = () => {
     if (!user || !ticket) return false;
-    return user.role === "TECH" && ticket.status !== "DONE";
+    return (user.role === "TECH" || user.role === "SUPERVISOR") && ticket.status !== "DONE";
   };
 
   if (isLoading || !ticket || !user) {
@@ -270,7 +269,7 @@ export default function TicketDetailPage() {
                   ) : (
                     <CardTitle className="text-2xl">{ticket.title}</CardTitle>
                   )}
-                  {user?.role === "TECH" && canEditBasicFields() && !isEditingBasicFields && (
+                  {(user?.role === "TECH" || user?.role === "SUPERVISOR") && canEditBasicFields() && !isEditingBasicFields && (
                     <button
                       onClick={() => setIsEditingBasicFields(true)}
                       className="p-2 hover:bg-gray-100 rounded transition-colors"
@@ -282,10 +281,10 @@ export default function TicketDetailPage() {
                 </div>
                 <div className="flex gap-2">
                   {getStatusBadge(ticket.status)}
-                  {user.role === "TECH" && getPriorityBadge(ticket.priority)}
+                  {(user.role === "TECH" || user.role === "SUPERVISOR") && getPriorityBadge(ticket.priority)}
                 </div>
               </div>
-              {user.role === "TECH" && (
+              {(user.role === "TECH" || user.role === "SUPERVISOR") && (
                 <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
                   <DialogTrigger asChild>
                     <Button variant="destructive" size="sm">
@@ -338,12 +337,53 @@ export default function TicketDetailPage() {
                     </p>
                   </div>
                   <div>
-                    <Label className="text-sm font-medium">Técnico</Label>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {ticket.assignedTo
-                        ? `${ticket.assignedTo.name} • ${ticket.assignedTo.email}`
-                        : "Não atribuído"}
-                    </p>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-sm font-medium">Técnico</Label>
+                      {!ticket.assignedTo && (user?.role === "TECH" || user?.role === "SUPERVISOR") && (
+                        <Badge className="bg-slate-900 text-white text-xs">
+                          Sem responsável
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <p className="text-sm text-muted-foreground flex-1">
+                        {ticket.assignedTo
+                          ? `${ticket.assignedTo.name} • ${ticket.assignedTo.email}`
+                          : "Não atribuído"}
+                      </p>
+                      {!ticket.assignedTo && (user?.role === "TECH" || user?.role === "SUPERVISOR") && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={async () => {
+                            setIsEditing(true);
+                            try {
+                              await ticketService.updateTicket(ticket.id, {
+                                assignedToId: user.id,
+                              });
+                              toast({
+                                title: "✅ Ticket atribuído com sucesso!",
+                                description: "Você agora é o técnico responsável por este ticket.",
+                              });
+                              loadTicket();
+                            } catch (error) {
+                              if (error instanceof ApiError) {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Erro ao atribuir ticket",
+                                  description: error.message,
+                                });
+                              }
+                            } finally {
+                              setIsEditing(false);
+                            }
+                          }}
+                          disabled={isEditing}
+                        >
+                          Pegar Ticket
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -354,7 +394,28 @@ export default function TicketDetailPage() {
                         <Label htmlFor="status">Status</Label>
                         <Select
                           value={editedStatus}
-                          onValueChange={(value) => setEditedStatus(value as TicketStatus)}
+                          onValueChange={async (value) => {
+                            const newStatus = value as TicketStatus;
+                            setEditedStatus(newStatus);
+                            try {
+                              await ticketService.updateTicket(ticket.id, {
+                                status: newStatus,
+                              });
+                              toast({
+                                title: "Status atualizado",
+                                description: "O status do ticket foi atualizado com sucesso.",
+                              });
+                              loadTicket();
+                            } catch (error) {
+                              if (error instanceof ApiError) {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Erro ao atualizar status",
+                                  description: error.message,
+                                });
+                              }
+                            }
+                          }}
                           disabled={!canEdit() || isEditing}
                         >
                           <SelectTrigger id="status">
@@ -371,7 +432,28 @@ export default function TicketDetailPage() {
                         <Label htmlFor="priority">Prioridade</Label>
                         <Select
                           value={editedPriority}
-                          onValueChange={(value) => setEditedPriority(value as TicketPriority)}
+                          onValueChange={async (value) => {
+                            const newPriority = value as TicketPriority;
+                            setEditedPriority(newPriority);
+                            try {
+                              await ticketService.updateTicket(ticket.id, {
+                                priority: newPriority,
+                              });
+                              toast({
+                                title: "Prioridade atualizada",
+                                description: "A prioridade do ticket foi atualizada com sucesso.",
+                              });
+                              loadTicket();
+                            } catch (error) {
+                              if (error instanceof ApiError) {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Erro ao atualizar prioridade",
+                                  description: error.message,
+                                });
+                              }
+                            }
+                          }}
                           disabled={!canEdit() || isEditing}
                         >
                           <SelectTrigger id="priority">
@@ -386,29 +468,10 @@ export default function TicketDetailPage() {
                         </Select>
                       </div>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="assignedTo">Atribuir técnico</Label>
-                      <Select
-                        value={editedAssignedTo ?? "none"}
-                        onValueChange={(val) => setEditedAssignedTo(val as string | "none")}
-                        disabled={!canEdit() || isEditing}
-                      >
-                        <SelectTrigger id="assignedTo">
-                          <SelectValue placeholder="Selecionar técnico" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Não atribuído</SelectItem>
-                          {technicians.map((t) => (
-                            <SelectItem key={t.id} value={t.id}>{`${t.name} • ${t.email}`}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </>
                 )}
 
-                {isEditingBasicFields && user?.role === "TECH" && (
+                {isEditingBasicFields && (user?.role === "TECH" || user?.role === "SUPERVISOR") && (
                   <div className="flex gap-2 pt-2 border-t">
                     <Button 
                       onClick={handleUpdate} 

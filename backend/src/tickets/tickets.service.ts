@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { AuditLogService } from '../audit-log/audit-log.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { ListTicketsDto } from './dto/list-tickets.dto';
@@ -39,7 +40,10 @@ export interface PaginatedResponse<T> {
 
 @Injectable()
 export class TicketsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditLogService: AuditLogService,
+  ) {}
 
   async create(
     createTicketDto: CreateTicketDto,
@@ -62,10 +66,20 @@ export class TicketsService {
       }
     }
 
-    return this.prisma.ticket.create({
+    const ticket = await this.prisma.ticket.create({
       data: ticketData,
       include: ticketInclude,
     });
+
+    // Log da criação
+    await this.auditLogService.logTicketAction(
+      'CREATE',
+      ticket.id,
+      userId,
+      { ticket: ticketData },
+    );
+
+    return ticket;
   }
 
   async findById(id: string, userId: string, userRole: UserRole): Promise<Ticket> {
@@ -97,6 +111,7 @@ export class TicketsService {
       status,
       priority,
       search,
+      assignedToId,
     } = listTicketsDto;
 
     const skip = (page - 1) * limit;
@@ -114,6 +129,10 @@ export class TicketsService {
 
     if (priority) {
       whereClause.priority = priority;
+    }
+
+    if (assignedToId) {
+      whereClause.assignedToId = assignedToId;
     }
 
     if (search) {
@@ -176,14 +195,36 @@ export class TicketsService {
       }
       // CLIENT can only edit title and description
       const { title, description } = updateTicketDto;
-      return this.prisma.ticket.update({
+      
+      const beforeData = { title: ticket.title, description: ticket.description };
+      const afterData = { title, description };
+      
+      const updatedTicket = await this.prisma.ticket.update({
         where: { id },
         data: { title, description },
         include: ticketInclude,
       });
+
+      // Log da atualização
+      await this.auditLogService.logTicketAction(
+        'UPDATE',
+        id,
+        userId,
+        { before: beforeData, after: afterData },
+      );
+
+      return updatedTicket;
     }
 
     // TECH can edit everything
+    const beforeData = {
+      title: ticket.title,
+      description: ticket.description,
+      status: ticket.status,
+      priority: ticket.priority,
+      assignedToId: ticket.assignedToId,
+    };
+
     const updateData: any = { ...updateTicketDto };
 
     // Ensure assignee exists and is a TECH if provided
@@ -194,8 +235,21 @@ export class TicketsService {
         throw new NotFoundException('Assigned user not found');
       }
 
-      if (assignee.role !== UserRole.TECH) {
+      if (assignee.role !== UserRole.TECH && assignee.role !== UserRole.SUPERVISOR) {
         throw new ForbiddenException('Only TECH users can be assigned to tickets');
+      }
+
+      // Log especial para atribuição
+      if (ticket.assignedToId !== updateTicketDto.assignedToId) {
+        await this.auditLogService.logTicketAction(
+          'ASSIGN',
+          id,
+          userId,
+          {
+            before: ticket.assignedToId,
+            after: updateTicketDto.assignedToId,
+          },
+        );
       }
     }
 
@@ -208,11 +262,30 @@ export class TicketsService {
       }
     }
 
-    return this.prisma.ticket.update({
+    const updatedTicket = await this.prisma.ticket.update({
       where: { id },
       data: updateData,
       include: ticketInclude,
     });
+
+    // Log da atualização geral
+    await this.auditLogService.logTicketAction(
+      'UPDATE',
+      id,
+      userId,
+      {
+        before: beforeData,
+        after: {
+          title: updatedTicket.title,
+          description: updatedTicket.description,
+          status: updatedTicket.status,
+          priority: updatedTicket.priority,
+          assignedToId: updatedTicket.assignedToId,
+        },
+      },
+    );
+
+    return updatedTicket;
   }
 
   async delete(
@@ -235,6 +308,21 @@ export class TicketsService {
     if (userRole === UserRole.CLIENT && ticket.createdById !== userId) {
       throw new ForbiddenException('You do not have permission to delete this ticket');
     }
+
+    // Log antes de deletar
+    await this.auditLogService.logTicketAction(
+      'DELETE',
+      id,
+      userId,
+      {
+        ticket: {
+          title: ticket.title,
+          description: ticket.description,
+          status: ticket.status,
+          priority: ticket.priority,
+        },
+      },
+    );
 
     await this.prisma.ticket.delete({ where: { id } });
 

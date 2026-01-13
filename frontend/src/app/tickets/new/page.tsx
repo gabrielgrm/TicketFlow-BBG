@@ -55,7 +55,7 @@ export default function NewTicketPage() {
         description,
       };
       // CLIENT não envia prioridade; TECH pode enviar
-      if (user?.role === "TECH") {
+      if (user?.role === "TECH" || user?.role === "SUPERVISOR") {
         payload.priority = priority;
       }
       await ticketService.createTicket(payload);

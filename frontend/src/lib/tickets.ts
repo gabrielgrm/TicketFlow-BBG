@@ -17,6 +17,7 @@ export const ticketService = {
     if (filters.status) params.append('status', filters.status);
     if (filters.priority) params.append('priority', filters.priority);
     if (filters.search) params.append('search', filters.search);
+    if (filters.assignedToId) params.append('assignedToId', filters.assignedToId);
 
     return fetchApi<ListResponse<Ticket>>(
       `/tickets?${params.toString()}`,
