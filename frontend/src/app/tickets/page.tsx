@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { authService } from "@/lib/auth";
 import { ticketService } from "@/lib/tickets";
 import { Ticket, User, TicketStatus, TicketPriority } from "@/types";
@@ -142,8 +143,8 @@ export default function TicketsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-white dark:bg-slate-950 border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">TicketFlow</h1>
@@ -159,6 +160,7 @@ export default function TicketsPage() {
                 </Button>
               </Link>
             )}
+            <ThemeToggle />
             <Button variant="outline" onClick={() => authService.logout()}>
               <LogOut className="mr-2 h-4 w-4" />
               Sair
@@ -212,18 +214,20 @@ export default function TicketsPage() {
                   <SelectItem value="DONE">Concluído</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={priorityFilter || "all"} onValueChange={(value) => setPriorityFilter(value === "all" ? "" : value as TicketPriority)}>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Prioridade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  <SelectItem value="LOW">Baixa</SelectItem>
-                  <SelectItem value="MEDIUM">Média</SelectItem>
-                  <SelectItem value="HIGH">Alta</SelectItem>
-                  <SelectItem value="URGENT">Urgente</SelectItem>
-                </SelectContent>
-              </Select>
+              {(user?.role === "TECH" || user?.role === "SUPERVISOR") && (
+                <Select value={priorityFilter || "all"} onValueChange={(value) => setPriorityFilter(value === "all" ? "" : value as TicketPriority)}>
+                  <SelectTrigger className="w-full md:w-[180px]">
+                    <SelectValue placeholder="Prioridade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    <SelectItem value="LOW">Baixa</SelectItem>
+                    <SelectItem value="MEDIUM">Média</SelectItem>
+                    <SelectItem value="HIGH">Alta</SelectItem>
+                    <SelectItem value="URGENT">Urgente</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {isLoading ? (

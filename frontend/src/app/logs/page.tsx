@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { authService } from "@/lib/auth";
 import { logService } from "@/lib/logs";
 import { AuditLog, User } from "@/types";
@@ -198,8 +199,8 @@ export default function LogsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-white dark:bg-slate-950 border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold">TicketFlow - Logs</h1>
@@ -214,6 +215,7 @@ export default function LogsPage() {
                 Voltar
               </Button>
             </Link>
+            <ThemeToggle />
             <Button variant="outline" onClick={() => authService.logout()}>
               <LogOut className="mr-2 h-4 w-4" />
               Sair
