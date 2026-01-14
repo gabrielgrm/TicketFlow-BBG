@@ -123,3 +123,52 @@ export interface LogFilters {
   entityId?: string;
   userId?: string;
 }
+// Profile metrics and performance data
+export interface ProfileMetrics {
+  assignedCount: number;
+  resolvedThisMonth: number;
+  avgResponseTime: string;
+  resolutionRate: number;
+  highPriorityResolved: number;
+  lowPriorityResolved: number;
+}
+
+export interface ResolvedTrendData {
+  labels: string[];
+  resolved: number[];
+}
+
+export interface PriorityDistribution {
+  LOW: number;
+  MEDIUM: number;
+  HIGH: number;
+  URGENT: number;
+}
+
+export interface TeamComparisonEntry {
+  id: string;
+  name: string;
+  resolved: number;
+  isMe: boolean;
+}
+
+export interface HistoryEntry {
+  id: string;
+  title: string;
+  priority: TicketPriority;
+  resolvedAt: string;
+  timeSpentHours: number;
+  clientFeedback?: string;
+}
+
+export interface ProfileCharts {
+  resolvedTrend: ResolvedTrendData;
+  priorityDistribution: PriorityDistribution;
+  teamComparison: TeamComparisonEntry[];
+}
+
+export interface ProfileData {
+  metrics: ProfileMetrics;
+  charts: ProfileCharts;
+  history: HistoryEntry[];
+}

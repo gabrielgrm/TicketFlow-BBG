@@ -10,12 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { authService } from "@/lib/auth";
 import { ticketService } from "@/lib/tickets";
 import { Ticket, User, TicketStatus, TicketPriority } from "@/types";
 import { ApiError } from "@/lib/api";
-import { LogOut, Plus, Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -145,34 +144,13 @@ export default function TicketsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white dark:bg-card border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <header className="bg-white dark:bg-card border-b sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-4">
           <div>
-            <h1 className="text-2xl font-bold">TicketFlow</h1>
+            <h1 className="text-2xl font-bold">Tickets</h1>
             <p className="text-sm text-muted-foreground">
-              Olá, {user.name} ({user.role === "CLIENT" ? "Cliente" : user.role === "SUPERVISOR" ? "Supervisor" : "Técnico"})
+              Gerenciar seus tickets de suporte
             </p>
-          </div>
-          <div className="flex gap-2">
-            {user.role === "SUPERVISOR" && (
-              <>
-                <Link href="/logs">
-                  <Button variant="outline">
-                    Logs
-                  </Button>
-                </Link>
-                <Link href="/users/new">
-                  <Button variant="outline">
-                    Novo Usuário
-                  </Button>
-                </Link>
-              </>
-            )}
-            <ThemeToggle />
-            <Button variant="outline" onClick={() => authService.logout()}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
           </div>
         </div>
       </header>

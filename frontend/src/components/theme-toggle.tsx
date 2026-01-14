@@ -39,17 +39,22 @@ export function ThemeToggle() {
   if (!mounted) return null;
 
   return (
-    <Button
-      variant="outline"
-      size="icon"
+    <button
       onClick={toggleTheme}
       title={`Mudar para tema ${theme === "light" ? "escuro" : "claro"}`}
+      className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors text-sm font-medium text-foreground dark:text-gray-900"
     >
       {theme === "light" ? (
-        <Moon className="h-4 w-4" />
+        <>
+          <Moon className="w-4 h-4" />
+          <span>Tema Escuro</span>
+        </>
       ) : (
-        <Sun className="h-4 w-4" />
+        <>
+          <Sun className="w-4 h-4" />
+          <span>Tema Claro</span>
+        </>
       )}
-    </Button>
+    </button>
   );
 }

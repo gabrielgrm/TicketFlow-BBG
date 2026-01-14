@@ -2,18 +2,15 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { authService } from "@/lib/auth";
 import { usersService } from "@/lib/users";
 import { ApiError } from "@/lib/api";
-import { ArrowLeft, LogOut } from "lucide-react";
 import { User, UserRole } from "@/types";
 
 export default function NewUserPage() {
@@ -110,32 +107,18 @@ export default function NewUserPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white dark:bg-card border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold">TicketFlow</h1>
-          <div className="flex gap-2">
-            <ThemeToggle />
-            <Button variant="outline" onClick={() => authService.logout()}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
-          </div>
+      <header className="bg-white dark:bg-card border-b sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-4">
+          <h1 className="text-2xl font-bold">Novo Usuário Administrador</h1>
         </div>
       </header>
 
       <main className="min-h-screen flex items-center justify-center px-4 py-8">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1">
-            <div className="flex items-center gap-2 mb-4">
-              <Link href="/tickets">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <CardTitle className="text-2xl font-bold">Novo Usuário</CardTitle>
-            </div>
+            <CardTitle className="text-2xl font-bold">Criar Usuário</CardTitle>
             <CardDescription>
-              Crie um novo usuário técnico ou supervisor
+              Crie um novo técnico ou supervisor
             </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>

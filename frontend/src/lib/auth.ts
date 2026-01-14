@@ -37,7 +37,6 @@ export const authService = {
         requiresAuth: true,
       });
     } catch (error: any) {
-      // Se receber 404 ou 401, significa que o usuário não existe ou token inválido
       if (error.status === 404 || error.status === 401) {
         console.log("Usuário não encontrado ou não autorizado, fazendo logout automático");
         this.logout();

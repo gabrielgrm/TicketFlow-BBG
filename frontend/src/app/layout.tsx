@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import ProfileSidebar from "@/components/profile-sidebar";
+import Sidebar from "@/components/sidebar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -31,7 +33,11 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        {children}
+        <Sidebar />
+        <main className="md:ml-64">
+          {children}
+        </main>
+        <ProfileSidebar />
         <Toaster />
       </body>
     </html>

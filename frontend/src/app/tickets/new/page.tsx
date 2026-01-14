@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { authService } from "@/lib/auth";
 import { ticketService } from "@/lib/tickets";
 import { ApiError } from "@/lib/api";
+import { translateErrorMessage } from "@/lib/utils";
 import { User } from "@/types";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";

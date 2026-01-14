@@ -18,7 +18,7 @@ export class AuthService {
     // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
-      throw new BadRequestException('User with this email already exists');
+      throw new BadRequestException('Usuário com este email já existe');
     }
 
     // Hash password

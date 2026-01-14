@@ -18,7 +18,7 @@ export class CommentsService {
     });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket not found');
+      throw new NotFoundException('Ticket não encontrado');
     }
 
     const comment = await this.prisma.comment.create({

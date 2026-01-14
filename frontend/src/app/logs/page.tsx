@@ -9,12 +9,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { authService } from "@/lib/auth";
 import { logService } from "@/lib/logs";
 import { AuditLog, User } from "@/types";
 import { ApiError } from "@/lib/api";
-import { ArrowLeft, ChevronLeft, ChevronRight, LogOut } from "lucide-react";
+import { translateErrorMessage } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -200,26 +200,13 @@ export default function LogsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white dark:bg-card border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <header className="bg-white dark:bg-card border-b sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-4">
           <div>
-            <h1 className="text-2xl font-bold">TicketFlow - Logs</h1>
+            <h1 className="text-2xl font-bold">Logs do Sistema</h1>
             <p className="text-sm text-muted-foreground">
-              Histórico de alterações do sistema
+              Histórico de alterações
             </p>
-          </div>
-          <div className="flex gap-2">
-            <Link href="/tickets">
-              <Button variant="outline">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Voltar
-              </Button>
-            </Link>
-            <ThemeToggle />
-            <Button variant="outline" onClick={() => authService.logout()}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sair
-            </Button>
           </div>
         </div>
       </header>

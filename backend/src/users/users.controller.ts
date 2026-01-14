@@ -32,12 +32,12 @@ export class UsersController {
     // Verificar se o email já existe
     const existingUser = await this.usersService.findByEmail(createUserDto.email);
     if (existingUser) {
-      throw new ConflictException('Email already exists');
+      throw new ConflictException('Email já existe');
     }
 
     // Validar que apenas TECH ou SUPERVISOR podem ser criados
     if (createUserDto.role === UserRole.CLIENT) {
-      throw new ConflictException('Cannot create CLIENT users through this endpoint');
+      throw new ConflictException('Não é possível criar usuários CLIENT através deste endpoint');
     }
 
     return this.usersService.create(createUserDto);

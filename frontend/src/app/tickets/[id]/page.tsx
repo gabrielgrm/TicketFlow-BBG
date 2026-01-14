@@ -372,7 +372,7 @@ export default function TicketDetailPage() {
                                 toast({
                                   variant: "destructive",
                                   title: "Erro ao atribuir ticket",
-                                  description: error.message,
+                                    description: error.message,
                                 });
                               }
                             } finally {

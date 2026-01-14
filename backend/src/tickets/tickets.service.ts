@@ -89,12 +89,12 @@ export class TicketsService {
     });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket not found');
+      throw new NotFoundException('Ticket não encontrado');
     }
 
     // Check authorization
     if (userRole === UserRole.CLIENT && ticket.createdById !== userId) {
-      throw new ForbiddenException('You do not have permission to access this ticket');
+      throw new ForbiddenException('Você não tem permissão para acessar este ticket');
     }
 
     return ticket;
@@ -180,18 +180,18 @@ export class TicketsService {
     const ticket = await this.prisma.ticket.findUnique({ where: { id } });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket not found');
+      throw new NotFoundException('Ticket não encontrado');
     }
 
     // Check if ticket is DONE
     if (ticket.status === TicketStatus.DONE) {
-      throw new ConflictException('Cannot edit a ticket with status DONE');
+      throw new ConflictException('Não é possível editar um ticket com status CONCLUÍDO');
     }
 
     // Check authorization
     if (userRole === UserRole.CLIENT) {
       if (ticket.createdById !== userId) {
-        throw new ForbiddenException('You do not have permission to edit this ticket');
+        throw new ForbiddenException('Você não tem permissão para editar este ticket');
       }
       // CLIENT can only edit title and description
       const { title, description } = updateTicketDto;
@@ -232,11 +232,11 @@ export class TicketsService {
       const assignee = await this.prisma.user.findUnique({ where: { id: updateTicketDto.assignedToId } });
 
       if (!assignee) {
-        throw new NotFoundException('Assigned user not found');
+        throw new NotFoundException('Usuário atribuído não encontrado');
       }
 
       if (assignee.role !== UserRole.TECH && assignee.role !== UserRole.SUPERVISOR) {
-        throw new ForbiddenException('Only TECH users can be assigned to tickets');
+        throw new ForbiddenException('Apenas usuários TECH podem ser atribuídos a tickets');
       }
 
       // Log especial para atribuição
@@ -296,17 +296,17 @@ export class TicketsService {
     const ticket = await this.prisma.ticket.findUnique({ where: { id } });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket not found');
+      throw new NotFoundException('Ticket não encontrado');
     }
 
     // Check if ticket is DONE
     if (ticket.status === TicketStatus.DONE) {
-      throw new ConflictException('Cannot delete a ticket with status DONE');
+      throw new ConflictException('Não é possível deletar um ticket com status DONE');
     }
 
     // Check authorization
     if (userRole === UserRole.CLIENT && ticket.createdById !== userId) {
-      throw new ForbiddenException('You do not have permission to delete this ticket');
+      throw new ForbiddenException('Você não tem permissão para deletar este ticket');
     }
 
     // Log antes de deletar
