@@ -25,8 +25,6 @@ export function ThemeToggle() {
     // Remove e adiciona a classe dark
     html.classList.remove("light", "dark");
     html.classList.add(newTheme);
-    
-    // Salva a preferência
     localStorage.setItem("theme", newTheme);
   };
 
