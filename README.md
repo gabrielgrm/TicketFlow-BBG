@@ -216,11 +216,12 @@ cd TicketFlow-BBG
 ```bash
 cd backend
 npm install
+npx prisma genarate
 ```
 
 #### Configurar Variáveis de Ambiente
 
-O projeto já possui um arquivo `.env` configurado com o banco de dados em nuvem:
+O projeto inclui um arquivo `.env.example` com as credenciais de teste já configuradas:
 
 ```env
 DATABASE_URL="prisma+postgres://accelerate.prisma-data.net/?api_key=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqd3RfaWQiOjEsInNlY3VyZV9rZXkiOiJza19VOEV5Nkk4N0dLanpsQk5jODU4V2YiLCJhcGlfa2V5IjoiMDFLRVdYSlZDSEdURDVOSlQ0MTBSNjQ1SlIiLCJ0ZW5hbnRfaWQiOiJmODM2M2Y0YTU2ZGVlMzZlNGYyODVlNjFjMmI2Mjk2ZDg5YWFmOTJjMWNkNTgyYTQyOTBkOWY5OGRhZGMwYzI2IiwiaW50ZXJuYWxfc2VjcmV0IjoiZDBhNWRmOGQtNGJhNS00NjUwLTliNjctNDdjNDRmZWRjNjM4In0.tgsYaLNzLJfXyeEMaQz4VvKTxCaLA9Otk3Dx5C9iGfI"
@@ -228,7 +229,15 @@ JWT_SECRET="0eabe18c55c11086"
 JWT_EXPIRATION="24h"
 ```
 
-> **ℹ️ Importante**: O banco de dados está hospedado em nuvem (Prisma Data Platform) e já possui dados de teste pré-carregados. **Não é necessário executar scripts de seed ou migrations** - o banco está pronto para uso imediato!
+Renomeie o arquivo `.env.example` para `.env`:
+```bash
+cp .env.example .env
+```
+
+> **⚠️ Aviso Importante sobre Segurança**:  
+> As credenciais incluídas no arquivo `.env.example` são de uma **conta de teste** e estão sendo compartilhadas apenas para fins de avaliação deste desafio técnico. **Estou ciente de que essa NÃO é uma prática recomendada em produção**
+
+> **ℹ️ Banco de Dados**: O banco de dados está hospedado em nuvem (Prisma Data Platform) e já possui dados de teste pré-carregados. **Não é necessário executar scripts de seed ou migrations** - o banco está pronto para uso imediato!
 
 ### 3. Configurar o Frontend
 
@@ -239,10 +248,15 @@ npm install
 
 #### Configurar Variáveis de Ambiente
 
-Crie um arquivo `.env.local` na raiz do frontend:
+O projeto inclui um arquivo `.env.example` com a configuração da API:
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3000
+```
+
+Renomeie o arquivo `.env.example` para `.env`:
+```bash
+cp .env.example .env
 ```
 
 ---
