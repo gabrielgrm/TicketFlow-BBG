@@ -437,7 +437,7 @@ Response:
 | POST | `/tickets/:id/comments` | Adicionar comentário | ✅ | Todos |
 
 **Exemplo de Listagem com Paginação:**
-```
+```json
 GET /tickets?page=1&limit=10&status=OPEN&priority=HIGH
 Authorization: Bearer {token}
 
