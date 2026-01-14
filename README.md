@@ -207,7 +207,7 @@ Antes de começar, certifique-se de ter instalado:
 ### 1. Clonar o Repositório
 
 ```bash
-git clone [https://github.com/gabrielgrm/TicketFlow-BBG.git](https://github.com/gabrielgrm/TicketFlow-BBG.git)
+git clone https://github.com/gabrielgrm/TicketFlow-BBG.git
 cd TicketFlow-BBG
 ```
 
