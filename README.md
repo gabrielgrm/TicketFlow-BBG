@@ -390,10 +390,10 @@ http://localhost:3000
 
 ### Autenticação
 
-| Método | Endpoint | Descrição | Auth |
+| Método | Endpoint | Descrição |
 |--------|----------|-----------|------|
-| POST | `/auth/register` | Registrar novo usuário (CLIENT) | ✅ |
-| POST | `/auth/login` | Login e obtenção do JWT | ✅ |
+| POST | `/auth/register` | Registrar novo usuário (CLIENT) |
+| POST | `/auth/login` | Login e obtenção do JWT |
 
 **Exemplo de Registro:**
 ```json
