@@ -44,7 +44,7 @@ export function ProfileSidebar() {
         setProfileData(data);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      // Error fetching profile
     } finally {
       setLoading(false);
     }

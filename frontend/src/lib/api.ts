@@ -5,14 +5,10 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
  */
 const logger = {
   info: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.info('[API]', ...args);
-    }
+    // API info logs disabled
   },
   error: (...args: any[]) => {
-    if (process.env.NODE_ENV === 'development') {
-      console.error('[API]', ...args);
-    }
+    // API error logs disabled
   },
 };
 

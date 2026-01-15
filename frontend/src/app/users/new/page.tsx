@@ -44,7 +44,7 @@ export default function NewUserPage() {
       
       setUser(currentUser);
     } catch (error) {
-      console.error("Erro ao verificar autenticação:", error);
+      // Erro ao verificar autenticação
       authService.logout();
       router.replace("/login");
     }

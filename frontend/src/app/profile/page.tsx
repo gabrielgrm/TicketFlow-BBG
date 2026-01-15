@@ -60,7 +60,7 @@ export default function ProfilePage() {
       const data = await profileService.getMyProfile();
       setProfileData(data);
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      // Error fetching profile
       setError('Erro ao carregar dados do perfil.');
       toast({
         title: 'Erro',

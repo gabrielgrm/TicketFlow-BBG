@@ -24,7 +24,7 @@ export function MobileSidebar() {
         setUser(currentUser);
       }
     } catch (error) {
-      console.error('Error checking auth:', error);
+      // Error checking auth
     } finally {
       setIsLoading(false);
     }
