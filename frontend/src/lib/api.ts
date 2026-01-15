@@ -1,5 +1,21 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+/**
+ * Logger utility - only logs in development environment
+ */
+const logger = {
+  info: (...args: any[]) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.info('[API]', ...args);
+    }
+  },
+  error: (...args: any[]) => {
+    if (process.env.NODE_ENV === 'development') {
+      console.error('[API]', ...args);
+    }
+  },
+};
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
     super(message);
@@ -45,14 +61,13 @@ export async function fetchApi<T>(
     if (!token) {
       throw new ApiError(401, 'Não autenticado');
     }
-    console.log('Enviando requisição autenticada. Token:', token.substring(0, 20) + '...');
     config.headers = {
       ...config.headers,
       Authorization: `Bearer ${token}`,
     };
   }
 
-  console.log('Fazendo requisição para:', `${API_URL}${endpoint}`, 'Headers:', config.headers);
+  logger.info(`Requisição: ${options.method || 'GET'} ${endpoint}`);
   const response = await fetch(`${API_URL}${endpoint}`, config);
 
   if (!response.ok) {
@@ -63,6 +78,7 @@ export async function fetchApi<T>(
     } catch {
       errorMessage = response.statusText;
     }
+    logger.error(`Erro ${response.status}: ${errorMessage}`);
     throw new ApiError(response.status, errorMessage);
   }
 
@@ -72,3 +88,5 @@ export async function fetchApi<T>(
 
   return response.json();
 }
+
+

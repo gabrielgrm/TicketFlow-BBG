@@ -8,16 +8,11 @@ import { fetchApi, setToken, removeToken, getToken } from './api';
 
 export const authService = {
   async login(credentials: LoginRequest): Promise<AuthResponse> {
-    console.log("Fazendo login...");
     const response = await fetchApi<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    console.log("Login bem-sucedido, resposta da API:", response);
-    console.log("Access token recebido:", response.accessToken);
     setToken(response.accessToken);
-    console.log("Token salvo:", !!getToken());
-    console.log("Token lido do localStorage:", getToken());
     return response;
   },
 
@@ -31,14 +26,12 @@ export const authService = {
   },
 
   async getCurrentUser(): Promise<User> {
-    console.log("Buscando usuário atual, token:", !!getToken());
     try {
       return await fetchApi<User>('/users/me', {
         requiresAuth: true,
       });
     } catch (error: any) {
       if (error.status === 404 || error.status === 401) {
-        console.log("Usuário não encontrado ou não autorizado, fazendo logout automático");
         this.logout();
       }
       throw error;
@@ -46,7 +39,6 @@ export const authService = {
   },
 
   logout(): void {
-    console.log("Fazendo logout");
     removeToken();
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
@@ -55,7 +47,6 @@ export const authService = {
 
   isAuthenticated(): boolean {
     const hasToken = !!getToken();
-    console.log("isAuthenticated:", hasToken);
     return hasToken;
   },
 };

@@ -123,6 +123,7 @@ export interface LogFilters {
   entityId?: string;
   userId?: string;
 }
+
 // Profile metrics and performance data
 export interface ProfileMetrics {
   assignedCount: number;

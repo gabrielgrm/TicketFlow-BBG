@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getStatusVariant, getPriorityVariant } from "@/lib/badge-variants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,6 +16,16 @@ import { ticketService } from "@/lib/tickets";
 import { Ticket, User, TicketStatus, TicketPriority } from "@/types";
 import { ApiError } from "@/lib/api";
 import { Plus, Search } from "lucide-react";
+
+function getStatusBadge(status: TicketStatus) {
+  const variant = getStatusVariant(status);
+  return <Badge className={variant.className}>{variant.label}</Badge>;
+}
+
+function getPriorityBadge(priority: TicketPriority | null) {
+  const variant = getPriorityVariant(priority);
+  return <Badge className={variant.className}>{variant.label}</Badge>;
+}
 
 export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -31,20 +42,15 @@ export default function TicketsPage() {
 
   const checkAuth = useCallback(async () => {
     if (!authService.isAuthenticated()) {
-      console.log("Token não encontrado, redirecionando para login");
       router.replace("/login");
       return;
     }
 
     try {
-      console.log("Verificando usuário autenticado...");
       const currentUser = await authService.getCurrentUser();
-      console.log("Usuário autenticado:", currentUser);
       setUser(currentUser);
     } catch (error) {
-      console.error("Erro ao verificar autenticação:", error);
       if (error instanceof ApiError && error.status === 401) {
-        console.log("Token inválido, fazendo logout");
         authService.logout();
       } else {
         // Para outros erros, mostrar mensagem mas não deslogar
@@ -106,31 +112,13 @@ export default function TicketsPage() {
 
 
   const handleSearch = () => {
-    setPage(1);
-    loadTickets();
-  };
 
-  const getStatusBadge = (status: TicketStatus) => {
-    const variants: Record<TicketStatus, { label: string; className: string }> = {
-      OPEN: { label: "Aberto", className: "bg-blue-500 text-white" },
-      IN_PROGRESS: { label: "Em Progresso", className: "bg-yellow-500 text-white" },
-      DONE: { label: "Concluído", className: "bg-green-500 text-white" },
-    };
-    const { label, className } = variants[status];
+    const { label, className } = getStatusVariant(status);
     return <Badge className={`${className} whitespace-nowrap`}>{label}</Badge>;
   };
 
   const getPriorityBadge = (priority: TicketPriority | null) => {
-    if (!priority) {
-      return <Badge className="bg-gray-300 text-gray-700">Indefinida</Badge>;
-    }
-    const variants: Record<TicketPriority, { label: string; className: string }> = {
-      LOW: { label: "Baixa", className: "bg-gray-500 text-white" },
-      MEDIUM: { label: "Média", className: "bg-purple-500 text-white" },
-      HIGH: { label: "Alta", className: "bg-orange-500 text-white" },
-      URGENT: { label: "Urgente", className: "bg-red-500 text-white" },
-    };
-    const { label, className } = variants[priority];
+    const { label, className } = getPriorityVariant(priority);
     return <Badge className={className}>{label}</Badge>;
   };
 
@@ -184,9 +172,9 @@ export default function TicketsPage() {
                   placeholder="Buscar tickets..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  onKeyDown={(e) => e.key === "Enter" && setPage(1)}
                 />
-                <Button onClick={handleSearch} size="icon">
+                <Button onClick={() => setPage(1)} size="icon">
                   <Search className="h-4 w-4" />
                 </Button>
               </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getActionVariant, getEntityTypeLabel } from "@/lib/badge-variants";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -13,7 +14,6 @@ import { authService } from "@/lib/auth";
 import { logService } from "@/lib/logs";
 import { AuditLog, User } from "@/types";
 import { ApiError } from "@/lib/api";
-import { translateErrorMessage } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function LogsPage() {
@@ -35,7 +35,7 @@ export default function LogsPage() {
 
     try {
       const currentUser = await authService.getCurrentUser();
-      
+
       if (currentUser.role !== "SUPERVISOR") {
         toast({
           variant: "destructive",
@@ -45,11 +45,12 @@ export default function LogsPage() {
         router.replace("/tickets");
         return;
       }
-      
+
       setUser(currentUser);
     } catch (error) {
-      console.error("Erro ao verificar autenticação:", error);
-      authService.logout();
+      if (error instanceof ApiError && error.status === 401) {
+        authService.logout();
+      }
       router.replace("/login");
     }
   }, [router, toast]);
@@ -62,14 +63,11 @@ export default function LogsPage() {
     setIsLoading(true);
     try {
       const pageSize = 20;
-      const filters: any = {
-        page,
-        limit: pageSize,
-      };
-      
-      if (actionFilter && actionFilter !== "all") filters.action = actionFilter;
-      if (entityTypeFilter && entityTypeFilter !== "all") filters.entityType = entityTypeFilter;
-      
+      const filters: Record<string, any> = { page, limit: pageSize };
+
+      if (actionFilter !== "all") filters.action = actionFilter;
+      if (entityTypeFilter !== "all") filters.entityType = entityTypeFilter;
+
       const response = await logService.getLogs(filters);
       setLogs(response.data);
       setTotalPages(response.meta.totalPages);
@@ -95,48 +93,20 @@ export default function LogsPage() {
     }
   }, [user, loadLogs]);
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString("pt-BR");
-  };
+  const formatDate = (date: string) => new Date(date).toLocaleString("pt-BR");
 
   const getActionBadge = (action: string) => {
-    const colors: Record<string, string> = {
-      CREATE: "bg-green-500",
-      UPDATE: "bg-blue-500",
-      DELETE: "bg-red-500",
-      ASSIGN: "bg-purple-500",
-      COMMENT_ADD: "bg-cyan-500",
-      COMMENT_DELETE: "bg-orange-500",
-    };
-    
-    const labels: Record<string, string> = {
-      CREATE: "Criado",
-      UPDATE: "Atualizado",
-      DELETE: "Excluído",
-      ASSIGN: "Atribuído",
-      COMMENT_ADD: "Comentário",
-      COMMENT_DELETE: "Comentário Excluído",
-    };
-
-    return (
-      <Badge className={`${colors[action] || "bg-gray-500"} text-white`}>
-        {labels[action] || action}
-      </Badge>
-    );
+    const { label, className } = getActionVariant(action);
+    return <Badge className={className}>{label}</Badge>;
   };
 
   const getEntityTypeBadge = (entityType: string) => {
-    const labels: Record<string, string> = {
-      TICKET: "Ticket",
-      COMMENT: "Comentário",
-    };
-
-    return <Badge variant="outline">{labels[entityType] || entityType}</Badge>;
+    return <Badge variant="outline">{getEntityTypeLabel(entityType)}</Badge>;
   };
 
   const formatChanges = (changes: any) => {
     if (!changes) return null;
-    
+
     const fieldLabels: Record<string, string> = {
       title: "Título",
       description: "Descrição",
@@ -165,10 +135,10 @@ export default function LogsPage() {
       if (key === "priority" && priorityLabels[value]) return priorityLabels[value];
       return JSON.stringify(value).replace(/"/g, "");
     };
-    
+
     try {
-      const changesList = [];
-      
+      const changesList = [] as JSX.Element[];
+
       if (changes.before && changes.after) {
         for (const key in changes.after) {
           if (changes.before[key] !== changes.after[key]) {
@@ -183,7 +153,7 @@ export default function LogsPage() {
           }
         }
       }
-      
+
       return changesList.length > 0 ? <div className="space-y-1">{changesList}</div> : null;
     } catch (e) {
       return <span className="text-xs text-muted-foreground">Detalhes não disponíveis</span>;
@@ -204,9 +174,7 @@ export default function LogsPage() {
         <div className="container mx-auto px-4 py-4">
           <div>
             <h1 className="text-2xl font-bold">Logs do Sistema</h1>
-            <p className="text-sm text-muted-foreground">
-              Histórico de alterações
-            </p>
+            <p className="text-sm text-muted-foreground">Histórico de alterações</p>
           </div>
         </div>
       </header>
@@ -218,7 +186,13 @@ export default function LogsPage() {
           </CardHeader>
           <CardContent>
             <div className="flex gap-4 mb-6">
-              <Select value={actionFilter} onValueChange={(value) => { setActionFilter(value); setPage(1); }}>
+              <Select
+                value={actionFilter}
+                onValueChange={(value) => {
+                  setActionFilter(value);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Filtrar por ação" />
                 </SelectTrigger>
@@ -233,7 +207,13 @@ export default function LogsPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={entityTypeFilter} onValueChange={(value) => { setEntityTypeFilter(value); setPage(1); }}>
+              <Select
+                value={entityTypeFilter}
+                onValueChange={(value) => {
+                  setEntityTypeFilter(value);
+                  setPage(1);
+                }}
+              >
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="Filtrar por tipo" />
                 </SelectTrigger>
@@ -268,9 +248,7 @@ export default function LogsPage() {
                   <TableBody>
                     {logs.map((log) => (
                       <TableRow key={log.id}>
-                        <TableCell className="font-mono text-xs">
-                          {formatDate(log.createdAt)}
-                        </TableCell>
+                        <TableCell className="font-mono text-xs">{formatDate(log.createdAt)}</TableCell>
                         <TableCell>{getActionBadge(log.action)}</TableCell>
                         <TableCell>{getEntityTypeBadge(log.entityType)}</TableCell>
                         <TableCell>
@@ -293,7 +271,13 @@ export default function LogsPage() {
                                 Ticket #{log.entityId.slice(0, 8)} (excluído)
                               </span>
                             )}
-                            {formatChanges(log.changes)}
+                            {log.action === "COMMENT_ADD" && log.metadata?.content && (
+                              <div className="text-xs bg-gray-50 dark:bg-gray-900 p-2 rounded border border-gray-200 dark:border-gray-700">
+                                <strong>Comentário:</strong>
+                                <p className="mt-1 text-gray-700 dark:text-gray-300 break-words">{log.metadata.content}</p>
+                              </div>
+                            )}
+                            {log.action !== "COMMENT_ADD" && formatChanges(log.changes)}
                           </div>
                         </TableCell>
                       </TableRow>
