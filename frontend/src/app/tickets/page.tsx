@@ -157,12 +157,14 @@ export default function TicketsPage() {
                   {showMyTickets ? "Todos os Tickets" : "Meus Tickets"}
                 </Button>
               )}
-              <Link href="/tickets/new" className="w-full sm:w-auto">
-                <Button className="w-full">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Novo Ticket
-                </Button>
-              </Link>
+              {user?.role === "CLIENT" && (
+                <Link href="/tickets/new" className="w-full sm:w-auto">
+                  <Button className="w-full">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Novo Ticket
+                  </Button>
+                </Link>
+              )}
             </div>
           </CardHeader>
           <CardContent>
