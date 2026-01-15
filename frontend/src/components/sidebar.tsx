@@ -65,7 +65,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3 py-4 space-y-2 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-3 overflow-y-auto">
         {/* Tickets - Todos podem ver */}
         <Link href="/tickets">
           <button

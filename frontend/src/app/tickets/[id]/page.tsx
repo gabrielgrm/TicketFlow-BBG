@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { MobileMenuButton } from "@/components/mobile-menu-button";
 import { authService } from "@/lib/auth";
 import { ticketService } from "@/lib/tickets";
 import { usersService } from "@/lib/users";
@@ -152,6 +152,7 @@ export default function TicketDetailPage() {
         title: "Ticket atualizado com sucesso!",
       });
       loadTicket();
+      setIsEditingBasicFields(false);
     } catch (error) {
       if (error instanceof ApiError) {
         toast({
@@ -243,14 +244,16 @@ export default function TicketDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-white dark:bg-card border-b">
+      <header className="bg-white dark:bg-card border-b sticky top-0 z-30">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">TicketFlow</h1>
-          <ThemeToggle />
+          <div className="flex items-center gap-2">
+            <MobileMenuButton />
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-4xl">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="mb-6">
           <Link href="/tickets">
             <Button variant="ghost">
@@ -260,12 +263,14 @@ export default function TicketDetailPage() {
           </Link>
         </div>
 
-        <div className="grid gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
+          {/* Left Column - Ticket Details (3/5 width) */}
+          <div className="lg:col-span-3 space-y-6">
           <Card>
             <CardHeader className="flex flex-row items-start justify-between space-y-0">
               <div className="space-y-2 flex-1">
                 <div className="flex items-center gap-2">
-                  {isEditingBasicFields && user?.role === "TECH" ? (
+                  {isEditingBasicFields && (user?.role === "TECH" || user?.role === "SUPERVISOR") ? (
                     <Input
                       value={editedTitle}
                       onChange={(e) => setEditedTitle(e.target.value)}
@@ -277,7 +282,11 @@ export default function TicketDetailPage() {
                   )}
                   {(user?.role === "TECH" || user?.role === "SUPERVISOR") && canEditBasicFields() && !isEditingBasicFields && (
                     <button
-                      onClick={() => setIsEditingBasicFields(true)}
+                      onClick={() => {
+                        setEditedTitle(ticket.title);
+                        setEditedDescription(ticket.description ?? "");
+                        setIsEditingBasicFields(true);
+                      }}
                       className="p-2 hover:bg-gray-100 rounded transition-colors"
                       title="Editar título"
                     >
@@ -320,7 +329,7 @@ export default function TicketDetailPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Descrição</Label>
-                  {isEditingBasicFields && user?.role === "TECH" ? (
+                  {isEditingBasicFields && (user?.role === "TECH" || user?.role === "SUPERVISOR") ? (
                     <Textarea
                       value={editedDescription}
                       onChange={(e) => setEditedDescription(e.target.value)}
@@ -500,51 +509,67 @@ export default function TicketDetailPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Comentários</CardTitle>
+          {/* Right Column - Comments (2/5 width) */}
+          <div className="lg:col-span-2">
+          <Card className="sticky top-24">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Comentários</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
               {ticket.comments && ticket.comments.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {ticket.comments.map((c) => (
-                    <div key={c.id} className="border-l-2 border-gray-300 pl-4">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{c.user.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(c.createdAt).toLocaleString("pt-BR")}
+                    <div key={c.id} className="border-l-2 border-primary pl-3 pb-3 border-b">
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <span className="font-medium text-xs">{c.user.name}</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(c.createdAt).toLocaleString("pt-BR", {
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{c.content}</p>
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                        {c.content}
+                      </p>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum comentário ainda
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  Nenhum comentário
                 </p>
               )}
-
-              {canEdit() && (
+            </CardContent>
+            {canEdit() && (
+              <div className="border-t p-3">
                 <form onSubmit={handleAddComment} className="space-y-2">
-                  <Label htmlFor="comment">Adicionar comentário</Label>
                   <Textarea
-                    id="comment"
-                    placeholder="Digite seu comentário..."
+                    placeholder="Comentário..."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     disabled={isSubmittingComment}
-                    rows={3}
+                    rows={2}
+                    className="text-xs resize-none"
                   />
-                  <Button type="submit" disabled={isSubmittingComment || !comment.trim()}>
-                    <Send className="mr-2 h-4 w-4" />
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmittingComment || !comment.trim()}
+                    size="sm"
+                    className="w-full"
+                  >
+                    <Send className="mr-1 h-3 w-3" />
                     {isSubmittingComment ? "Enviando..." : "Enviar"}
                   </Button>
                 </form>
-              )}
-            </CardContent>
+              </div>
+            )}
           </Card>
+          </div>
         </div>
       </main>
     </div>

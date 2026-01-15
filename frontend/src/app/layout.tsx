@@ -4,6 +4,8 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import ProfileSidebar from "@/components/profile-sidebar";
 import Sidebar from "@/components/sidebar";
+import { LayoutContent } from "./layout-content";
+import { SidebarWrapper } from "./sidebar-wrapper";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -33,11 +35,13 @@ export default function RootLayout({
         />
       </head>
       <body className={inter.className}>
-        <Sidebar />
-        <main className="md:ml-64">
-          {children}
-        </main>
-        <ProfileSidebar />
+        <SidebarWrapper>
+          <Sidebar />
+        </SidebarWrapper>
+        <LayoutContent>{children}</LayoutContent>
+        <SidebarWrapper>
+          <ProfileSidebar />
+        </SidebarWrapper>
         <Toaster />
       </body>
     </html>
