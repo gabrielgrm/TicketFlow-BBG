@@ -1,6 +1,6 @@
 import { IsOptional, IsInt, Min, IsEnum, IsString } from 'class-validator';
 import { TicketStatus, TicketPriority } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
 import { PAGINATION } from '../../common/constants';
 
 export class ListTicketsDto {
@@ -17,11 +17,13 @@ export class ListTicketsDto {
   limit?: number = PAGINATION.DEFAULT_LIMIT;
 
   @IsOptional()
-  @IsEnum(TicketStatus)
+  @Transform(({ value }) => value as TicketStatus)
+  @IsEnum(TicketStatus, { message: 'Status deve ser: OPEN, IN_PROGRESS ou DONE' })
   status?: TicketStatus;
 
   @IsOptional()
-  @IsEnum(TicketPriority)
+  @Transform(({ value }) => value as TicketPriority)
+  @IsEnum(TicketPriority, { message: 'Prioridade deve ser: LOW, MEDIUM, HIGH ou URGENT' })
   priority?: TicketPriority;
 
   @IsOptional()
