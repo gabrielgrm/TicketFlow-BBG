@@ -6,6 +6,7 @@ import ProfileSidebar from "@/components/profile-sidebar";
 import Sidebar from "@/components/sidebar";
 import { LayoutContent } from "./layout-content";
 import { SidebarWrapper } from "./sidebar-wrapper";
+import MobileSidebar from "@/components/mobile-sidebar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -38,6 +39,7 @@ export default function RootLayout({
         <SidebarWrapper>
           <Sidebar />
         </SidebarWrapper>
+        <MobileSidebar />
         <LayoutContent>{children}</LayoutContent>
         <SidebarWrapper>
           <ProfileSidebar />
