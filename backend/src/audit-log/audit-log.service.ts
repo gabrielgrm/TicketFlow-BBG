@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { AuditLog } from '@prisma/client';
+import { AuditLog, Prisma } from '@prisma/client';
+import { safeUserSelect } from '../common/selectors';
+import { PAGINATION } from '../common/constants';
 
 export interface CreateAuditLogDto {
   action: string;
   entityType: string;
   entityId: string;
-  changes?: any;
+  changes?: Prisma.InputJsonValue;
   userId: string;
-  metadata?: any;
+  metadata?: Prisma.InputJsonValue;
 }
 
 export interface ListAuditLogsDto {
@@ -37,15 +39,19 @@ export class AuditLogService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createAuditLogDto: CreateAuditLogDto): Promise<AuditLog> {
+    const { userId, ...rest } = createAuditLogDto;
     return this.prisma.auditLog.create({
-      data: createAuditLogDto,
+      data: {
+        ...rest,
+        user: { connect: { id: userId } },
+      },
     });
   }
 
   async findAll(params: ListAuditLogsDto): Promise<PaginatedAuditLogs> {
     const {
-      page = 1,
-      limit = 50,
+      page = PAGINATION.DEFAULT_PAGE,
+      limit = PAGINATION.DEFAULT_AUDIT_LIMIT,
       action,
       entityType,
       entityId,
@@ -55,7 +61,7 @@ export class AuditLogService {
     } = params;
 
     const skip = (page - 1) * limit;
-    const whereClause: any = {};
+    const whereClause: Prisma.AuditLogWhereInput = {};
 
     if (action) whereClause.action = action;
     if (entityType) whereClause.entityType = entityType;
@@ -74,14 +80,7 @@ export class AuditLogService {
         skip,
         take: limit,
         include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
-            },
-          },
+          user: { select: safeUserSelect },
         },
         orderBy: {
           createdAt: 'desc',
@@ -108,14 +107,7 @@ export class AuditLogService {
         entityId: ticketId,
       },
       include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
+        user: { select: safeUserSelect },
       },
       orderBy: {
         createdAt: 'desc',
@@ -123,13 +115,12 @@ export class AuditLogService {
     });
   }
 
-  // Helper para registrar ações de ticket
   async logTicketAction(
     action: 'CREATE' | 'UPDATE' | 'DELETE' | 'ASSIGN',
     ticketId: string,
     userId: string,
-    changes?: any,
-    metadata?: any,
+    changes?: Prisma.InputJsonValue,
+    metadata?: Prisma.InputJsonValue,
   ): Promise<AuditLog> {
     return this.create({
       action,
@@ -141,13 +132,12 @@ export class AuditLogService {
     });
   }
 
-  // Helper para registrar ações de comentário
   async logCommentAction(
     action: 'COMMENT_ADD' | 'COMMENT_DELETE',
     commentId: string,
     ticketId: string,
     userId: string,
-    metadata?: any,
+    metadata?: Prisma.InputJsonValue,
   ): Promise<AuditLog> {
     return this.create({
       action,

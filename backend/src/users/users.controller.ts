@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Body, UseGuards, Request, ConflictException } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, ConflictException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../common/decorators/roles.decorator';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { CreateUserDto } from './dto/create-user.dto';
+import { RequestUser } from '../common/types';
+import { ERROR_MESSAGES } from '../common/constants';
 
 @Controller('users')
 export class UsersController {
@@ -12,15 +15,14 @@ export class UsersController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async getProfile(@Request() req: any) {
-    const user = await this.usersService.findById(req.user.id);
-    const { passwordHash, ...userWithoutPassword } = user;
+  async getProfile(@CurrentUser() user: RequestUser) {
+    const fullUser = await this.usersService.findById(user.id);
+    const { passwordHash, ...userWithoutPassword } = fullUser;
     return userWithoutPassword;
   }
 
   @Get('technicians')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.TECH)
+  @UseGuards(JwtAuthGuard)
   async listTechnicians() {
     return this.usersService.findTechnicians();
   }
@@ -29,15 +31,13 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPERVISOR)
   async createUser(@Body() createUserDto: CreateUserDto) {
-    // Verificar se o email já existe
     const existingUser = await this.usersService.findByEmail(createUserDto.email);
     if (existingUser) {
-      throw new ConflictException('Email já existe');
+      throw new ConflictException(ERROR_MESSAGES.EMAIL_ALREADY_EXISTS);
     }
 
-    // Validar que apenas TECH ou SUPERVISOR podem ser criados
     if (createUserDto.role === UserRole.CLIENT) {
-      throw new ConflictException('Não é possível criar usuários CLIENT através deste endpoint');
+      throw new ConflictException(ERROR_MESSAGES.CANNOT_CREATE_CLIENT);
     }
 
     return this.usersService.create(createUserDto);

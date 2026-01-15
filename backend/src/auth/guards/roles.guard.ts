@@ -2,6 +2,7 @@ import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../../common/decorators/roles.decorator';
 import { UserRole } from '@prisma/client';
+import { ERROR_MESSAGES } from '../../common/constants';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -13,19 +14,19 @@ export class RolesGuard implements CanActivate {
       [context.getHandler(), context.getClass()],
     );
 
-    if (!requiredRoles) {
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true;
     }
 
     const { user } = context.switchToHttp().getRequest();
 
     if (!user) {
-      throw new ForbiddenException('Usuário não encontrado');
+      throw new ForbiddenException(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
     const hasRole = requiredRoles.includes(user.role);
     if (!hasRole) {
-      throw new ForbiddenException('Você não tem permissão para realizar esta ação');
+      throw new ForbiddenException(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
     return true;

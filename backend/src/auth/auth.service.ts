@@ -4,6 +4,8 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AuthResponse, UserWithoutPassword } from '../common/types';
+import { PASSWORD, ERROR_MESSAGES } from '../common/constants';
 
 @Injectable()
 export class AuthService {
@@ -12,58 +14,45 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(registerDto: RegisterDto) {
-    const { email, password, name, role } = registerDto;
+  async register(registerDto: RegisterDto): Promise<AuthResponse> {
+    const { email } = registerDto;
 
-    // Check if user already exists
     const existingUser = await this.usersService.findByEmail(email);
     if (existingUser) {
-      throw new BadRequestException('Usuário com este email já existe');
+      throw new BadRequestException(ERROR_MESSAGES.USER_ALREADY_EXISTS);
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await this.usersService.create(registerDto);
 
-    // Create user
-    const user = await this.usersService.create({
-      email,
-      password: hashedPassword,
-      name,
-      role,
-    } as any);
+    const accessToken = this.generateToken(user);
 
-    // Generate token
-    const accessToken = this.jwtService.sign({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    return { accessToken };
+    return { accessToken, user };
   }
 
-  async login(loginDto: LoginDto) {
+  async login(loginDto: LoginDto): Promise<AuthResponse> {
     const { email, password } = loginDto;
 
-    // Find user
     const user = await this.usersService.findByEmail(email);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
     }
 
-    // Validate password
     const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException(ERROR_MESSAGES.INVALID_CREDENTIALS);
     }
 
-    // Generate token
-    const accessToken = this.jwtService.sign({
+    const { passwordHash, ...userWithoutPassword } = user;
+    const accessToken = this.generateToken(userWithoutPassword);
+
+    return { accessToken, user: userWithoutPassword };
+  }
+
+  private generateToken(user: UserWithoutPassword): string {
+    return this.jwtService.sign({
       sub: user.id,
       email: user.email,
       role: user.role,
     });
-
-    return { accessToken };
   }
 }

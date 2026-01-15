@@ -3,16 +3,18 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import { UserWithoutPassword, SafeUser } from '../common/types';
+import { PASSWORD, ERROR_MESSAGES } from '../common/constants';
+import { safeUserSelect } from '../common/selectors';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(createUserDto: CreateUserDto): Promise<Omit<User, 'passwordHash'>> {
+  async create(createUserDto: CreateUserDto): Promise<UserWithoutPassword> {
     const { password, ...rest } = createUserDto;
     
-    // Hash da senha
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, PASSWORD.SALT_ROUNDS);
     
     const user = await this.prisma.user.create({
       data: {
@@ -31,7 +33,7 @@ export class UsersService {
     });
 
     if (!user) {
-      throw new NotFoundException('Usuário não encontrado');
+      throw new NotFoundException(ERROR_MESSAGES.USER_NOT_FOUND);
     }
 
     return user;
@@ -47,15 +49,10 @@ export class UsersService {
     return this.prisma.user.findMany();
   }
 
-  async findTechnicians(): Promise<Pick<User, 'id' | 'name' | 'email' | 'role'>[]> {
+  async findTechnicians(): Promise<SafeUser[]> {
     return this.prisma.user.findMany({
       where: { role: 'TECH' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-      },
+      select: safeUserSelect,
     });
   }
 }

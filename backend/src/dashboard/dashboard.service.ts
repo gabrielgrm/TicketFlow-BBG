@@ -1,111 +1,109 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { TicketStatus, TicketPriority } from '@prisma/client';
+import { DASHBOARD } from '../common/constants';
+
+export interface DashboardStats {
+  openToday: number;
+  totalPending: number;
+  resolvedToday: number;
+  avgResponseTime: string;
+  urgentPending: number;
+  unassigned: number;
+  overdueTickets: number;
+  resolutionRate: number;
+}
+
+export interface ChartTrends {
+  labels: string[];
+  created: number[];
+  resolved: number[];
+}
+
+export interface PriorityDistribution {
+  LOW: number;
+  MEDIUM: number;
+  HIGH: number;
+  URGENT: number;
+}
+
+export interface TechnicianMetrics {
+  id: string;
+  name: string;
+  assigned: number;
+  resolved: number;
+  avgTime: string;
+}
 
 @Injectable()
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getStats() {
+  async getStats(): Promise<DashboardStats> {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    const twoDaysAgo = new Date(now.getTime() - DASHBOARD.DEFAULT_TREND_DAYS * 48 * 60 * 60 * 1000);
 
-    // Tickets abertos hoje
-    const openToday = await this.prisma.ticket.count({
-      where: {
-        createdAt: {
-          gte: todayStart,
+    const [
+      openToday,
+      totalPending,
+      resolvedToday,
+      urgentPending,
+      unassigned,
+      overdueTickets,
+      createdThisMonth,
+      resolvedThisMonth,
+      assignedTickets,
+    ] = await Promise.all([
+      this.prisma.ticket.count({
+        where: { createdAt: { gte: todayStart } },
+      }),
+      this.prisma.ticket.count({
+        where: { status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS] } },
+      }),
+      this.prisma.ticket.count({
+        where: {
+          status: TicketStatus.DONE,
+          updatedAt: { gte: todayStart },
         },
-      },
-    });
-
-    // Tickets pendentes (OPEN + IN_PROGRESS)
-    const totalPending = await this.prisma.ticket.count({
-      where: {
-        status: {
-          in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS],
+      }),
+      this.prisma.ticket.count({
+        where: {
+          priority: TicketPriority.URGENT,
+          status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS] },
         },
-      },
-    });
-
-    // Tickets resolvidos hoje
-    const resolvedToday = await this.prisma.ticket.count({
-      where: {
-        status: TicketStatus.DONE,
-        updatedAt: {
-          gte: todayStart,
+      }),
+      this.prisma.ticket.count({
+        where: {
+          assignedToId: null,
+          status: { not: TicketStatus.DONE },
         },
-      },
-    });
-
-    // Urgências pendentes (URGENT sem técnico ou abertos)
-    const urgentPending = await this.prisma.ticket.count({
-      where: {
-        priority: TicketPriority.URGENT,
-        status: {
-          in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS],
+      }),
+      this.prisma.ticket.count({
+        where: {
+          createdAt: { lt: twoDaysAgo },
+          status: { in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS] },
         },
-      },
-    });
-
-    // Tickets sem atribuição
-    const unassigned = await this.prisma.ticket.count({
-      where: {
-        assignedToId: null,
-        status: {
-          not: TicketStatus.DONE,
+      }),
+      this.prisma.ticket.count({
+        where: { createdAt: { gte: monthStart } },
+      }),
+      this.prisma.ticket.count({
+        where: {
+          status: TicketStatus.DONE,
+          updatedAt: { gte: monthStart },
         },
-      },
-    });
-
-    // Tickets atrasados (abertos há mais de 48h sem progresso)
-    const overdueTickets = await this.prisma.ticket.count({
-      where: {
-        createdAt: {
-          lt: twoDaysAgo,
-        },
-        status: {
-          in: [TicketStatus.OPEN, TicketStatus.IN_PROGRESS],
-        },
-      },
-    });
-
-    // Taxa de resolução (% de tickets fechados vs abertos no mês)
-    const createdThisMonth = await this.prisma.ticket.count({
-      where: {
-        createdAt: {
-          gte: monthStart,
-        },
-      },
-    });
-
-    const resolvedThisMonth = await this.prisma.ticket.count({
-      where: {
-        status: TicketStatus.DONE,
-        updatedAt: {
-          gte: monthStart,
-        },
-      },
-    });
+      }),
+      this.prisma.ticket.findMany({
+        where: { assignedToId: { not: null } },
+        select: { createdAt: true, updatedAt: true },
+      }),
+    ]);
 
     const resolutionRate = createdThisMonth > 0 
       ? (resolvedThisMonth / createdThisMonth) * 100 
       : 0;
-
-    // Tempo médio de resposta (média entre criação e primeira atribuição)
-    const assignedTickets = await this.prisma.ticket.findMany({
-      where: {
-        assignedToId: {
-          not: null,
-        },
-      },
-      select: {
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
 
     let avgResponseTime = '0h 0min';
     if (assignedTickets.length > 0) {
@@ -132,9 +130,23 @@ export class DashboardService {
     };
   }
 
-  async getChartTrends(days: number = 7) {
+  async getChartTrends(days: number = DASHBOARD.DEFAULT_TREND_DAYS): Promise<ChartTrends> {
     const now = new Date();
     const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+
+    const [createdTickets, resolvedTickets] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where: { createdAt: { gte: startDate } },
+        select: { createdAt: true },
+      }),
+      this.prisma.ticket.findMany({
+        where: {
+          status: TicketStatus.DONE,
+          updatedAt: { gte: startDate },
+        },
+        select: { updatedAt: true },
+      }),
+    ]);
 
     const labels: string[] = [];
     const created: number[] = [];
@@ -145,56 +157,32 @@ export class DashboardService {
       const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate());
       const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
-      // Formatar label (DD/MM)
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       labels.push(`${day}/${month}`);
 
-      // Contar tickets criados
-      const createdCount = await this.prisma.ticket.count({
-        where: {
-          createdAt: {
-            gte: dayStart,
-            lt: dayEnd,
-          },
-        },
-      });
+      const createdCount = createdTickets.filter(
+        t => t.createdAt >= dayStart && t.createdAt < dayEnd
+      ).length;
       created.push(createdCount);
 
-      // Contar tickets resolvidos
-      const resolvedCount = await this.prisma.ticket.count({
-        where: {
-          status: TicketStatus.DONE,
-          updatedAt: {
-            gte: dayStart,
-            lt: dayEnd,
-          },
-        },
-      });
+      const resolvedCount = resolvedTickets.filter(
+        t => t.updatedAt >= dayStart && t.updatedAt < dayEnd
+      ).length;
       resolved.push(resolvedCount);
     }
 
-    return {
-      labels,
-      created,
-      resolved,
-    };
+    return { labels, created, resolved };
   }
 
-  async getChartPriority() {
+  async getChartPriority(): Promise<PriorityDistribution> {
     const priorities = await this.prisma.ticket.groupBy({
       by: ['priority'],
-      _count: {
-        priority: true,
-      },
-      where: {
-        status: {
-          not: TicketStatus.DONE,
-        },
-      },
+      _count: { priority: true },
+      where: { status: { not: TicketStatus.DONE } },
     });
 
-    const result: Record<string, number> = {
+    const result: PriorityDistribution = {
       LOW: 0,
       MEDIUM: 0,
       HIGH: 0,
@@ -210,123 +198,98 @@ export class DashboardService {
     return result;
   }
 
-  async getTechnicians() {
-    const technicians = await this.prisma.user.findMany({
-      where: {
-        role: 'TECH',
-      },
-      select: {
-        id: true,
-        name: true,
-      },
-    });
-
-    const result = await Promise.all(
-      technicians.map(async (tech) => {
-        // Tickets atribuídos
-        const assigned = await this.prisma.ticket.count({
-          where: {
-            assignedToId: tech.id,
-            status: {
-              not: TicketStatus.DONE,
-            },
-          },
-        });
-
-        // Tickets resolvidos
-        const resolved = await this.prisma.ticket.count({
-          where: {
-            assignedToId: tech.id,
-            status: TicketStatus.DONE,
-          },
-        });
-
-        // Tempo médio de resolução
-        const resolvedTickets = await this.prisma.ticket.findMany({
-          where: {
-            assignedToId: tech.id,
-            status: TicketStatus.DONE,
-            resolvedAt: {
-              not: null,
-            },
-          },
-          select: {
-            createdAt: true,
-            resolvedAt: true,
-          },
-        });
-
-        let avgTime = '0h 0min';
-        if (resolvedTickets.length > 0) {
-          const totalMinutes = resolvedTickets.reduce((sum, ticket) => {
-            if (ticket.resolvedAt) {
-              const diff = ticket.resolvedAt.getTime() - ticket.createdAt.getTime();
-              return sum + diff / (1000 * 60);
-            }
-            return sum;
-          }, 0);
-
-          const avgMinutes = Math.floor(totalMinutes / resolvedTickets.length);
-          const hours = Math.floor(avgMinutes / 60);
-          const minutes = avgMinutes % 60;
-          avgTime = `${hours}h ${minutes}min`;
-        }
-
-        return {
-          id: tech.id,
-          name: tech.name,
-          assigned,
-          resolved,
-          avgTime,
-        };
+  async getTechnicians(): Promise<TechnicianMetrics[]> {
+    const [technicians, ticketCounts, resolvedTickets] = await Promise.all([
+      this.prisma.user.findMany({
+        where: { role: 'TECH' },
+        select: { id: true, name: true },
       }),
+      this.prisma.ticket.groupBy({
+        by: ['assignedToId'],
+        _count: { id: true },
+        where: {
+          assignedToId: { not: null },
+          status: { not: TicketStatus.DONE },
+        },
+      }),
+      this.prisma.ticket.findMany({
+        where: {
+          assignedToId: { not: null },
+          status: TicketStatus.DONE,
+          resolvedAt: { not: null },
+        },
+        select: {
+          assignedToId: true,
+          createdAt: true,
+          resolvedAt: true,
+        },
+      }),
+    ]);
+
+    const assignedMap = new Map(
+      ticketCounts.map(tc => [tc.assignedToId!, tc._count.id])
     );
 
-    return result;
+    const resolvedMap = new Map<string, { count: number; totalMinutes: number }>();
+    resolvedTickets.forEach(ticket => {
+      if (ticket.assignedToId && ticket.resolvedAt) {
+        const existing = resolvedMap.get(ticket.assignedToId) || { count: 0, totalMinutes: 0 };
+        const minutes = (ticket.resolvedAt.getTime() - ticket.createdAt.getTime()) / (1000 * 60);
+        resolvedMap.set(ticket.assignedToId, {
+          count: existing.count + 1,
+          totalMinutes: existing.totalMinutes + minutes,
+        });
+      }
+    });
+
+    return technicians.map(tech => {
+      const assigned = assignedMap.get(tech.id) || 0;
+      const resolvedData = resolvedMap.get(tech.id) || { count: 0, totalMinutes: 0 };
+
+      let avgTime = '0h 0min';
+      if (resolvedData.count > 0) {
+        const avgMinutes = Math.floor(resolvedData.totalMinutes / resolvedData.count);
+        const hours = Math.floor(avgMinutes / 60);
+        const minutes = avgMinutes % 60;
+        avgTime = `${hours}h ${minutes}min`;
+      }
+
+      return {
+        id: tech.id,
+        name: tech.name,
+        assigned,
+        resolved: resolvedData.count,
+        avgTime,
+      };
+    });
   }
 
   async getCriticalTickets() {
     return this.prisma.ticket.findMany({
       where: {
-        priority: {
-          in: [TicketPriority.URGENT, TicketPriority.HIGH],
-        },
-        status: {
-          not: TicketStatus.DONE,
-        },
+        priority: { in: [TicketPriority.URGENT, TicketPriority.HIGH] },
+        status: { not: TicketStatus.DONE },
       },
-      orderBy: {
-        createdAt: 'asc',
-      },
-      take: 5,
+      orderBy: { createdAt: 'asc' },
+      take: DASHBOARD.DEFAULT_CRITICAL_TICKETS,
       include: {
         createdBy: {
-          select: {
-            name: true,
-            email: true,
-          },
+          select: { name: true, email: true },
         },
         assignedTo: {
-          select: {
-            name: true,
-          },
+          select: { name: true },
         },
       },
     });
   }
 
-  async getRecentActions(limit: number = 10) {
+  async getRecentActions(limit: number = DASHBOARD.DEFAULT_RECENT_ACTIONS) {
     return this.prisma.auditLog.findMany({
-      orderBy: {
-        createdAt: 'desc',
-      },
+      orderBy: { createdAt: 'desc' },
       take: limit,
       include: {
         user: {
-          select: {
-            name: true,
-            email: true,
-          },
+          select: { name: true, email: true },
         },
       },
     });

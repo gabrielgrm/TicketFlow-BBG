@@ -9,34 +9,10 @@ import { AuditLogService } from '../audit-log/audit-log.service';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { UpdateTicketDto } from './dto/update-ticket.dto';
 import { ListTicketsDto } from './dto/list-tickets.dto';
-import { Ticket, TicketStatus, UserRole } from '@prisma/client';
-
-const baseUserSelect = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-} as const;
-
-const ticketInclude = {
-  createdBy: { select: baseUserSelect },
-  assignedTo: { select: baseUserSelect },
-  comments: {
-    include: {
-      user: { select: baseUserSelect },
-    },
-  },
-} as const;
-
-export interface PaginatedResponse<T> {
-  data: T[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
-}
+import { TicketStatus, UserRole, Prisma } from '@prisma/client';
+import { PaginatedResponse, TicketWithRelations } from '../common/types';
+import { ERROR_MESSAGES } from '../common/constants';
+import { ticketInclude } from '../common/selectors';
 
 @Injectable()
 export class TicketsService {
@@ -49,15 +25,14 @@ export class TicketsService {
     createTicketDto: CreateTicketDto,
     userId: string,
     userRole: UserRole,
-  ): Promise<Ticket> {
-    const ticketData: any = {
+  ): Promise<TicketWithRelations> {
+    const ticketData: Prisma.TicketCreateInput = {
       title: createTicketDto.title,
       description: createTicketDto.description,
-      createdById: userId,
+      createdBy: { connect: { id: userId } },
     };
 
-    // Only technicians can set priority or status on creation
-    if (userRole === UserRole.TECH) {
+    if (userRole === UserRole.TECH || userRole === UserRole.SUPERVISOR) {
       if (createTicketDto.priority) {
         ticketData.priority = createTicketDto.priority;
       }
@@ -68,49 +43,31 @@ export class TicketsService {
 
     const ticket = await this.prisma.ticket.create({
       data: ticketData,
-      include: {
-        createdBy: { select: baseUserSelect },
-        assignedTo: { select: baseUserSelect },
-        comments: {
-          include: {
-            user: { select: baseUserSelect },
-          },
-        },
-      },
+      include: ticketInclude,
     });
 
-    // Log da criação
     await this.auditLogService.logTicketAction(
       'CREATE',
       ticket.id,
       userId,
-      { ticket: ticketData },
+      { ticket: { title: ticket.title, description: ticket.description, priority: ticket.priority, status: ticket.status } },
     );
 
     return ticket;
   }
 
-  async findById(id: string, userId: string, userRole: UserRole): Promise<Ticket> {
+  async findById(id: string, userId: string, userRole: UserRole): Promise<TicketWithRelations> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
-      include: {
-        createdBy: { select: baseUserSelect },
-        assignedTo: { select: baseUserSelect },
-        comments: {
-          include: {
-            user: { select: baseUserSelect },
-          },
-        },
-      },
+      include: ticketInclude,
     });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket não encontrado');
+      throw new NotFoundException(ERROR_MESSAGES.TICKET_NOT_FOUND);
     }
 
-    // Check authorization
     if (userRole === UserRole.CLIENT && ticket.createdById !== userId) {
-      throw new ForbiddenException('Você não tem permissão para acessar este ticket');
+      throw new ForbiddenException(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
     return ticket;
@@ -120,7 +77,7 @@ export class TicketsService {
     listTicketsDto: ListTicketsDto,
     userId: string,
     userRole: UserRole,
-  ): Promise<PaginatedResponse<Ticket>> {
+  ): Promise<PaginatedResponse<TicketWithRelations>> {
     const {
       page = 1,
       limit = 10,
@@ -132,8 +89,7 @@ export class TicketsService {
 
     const skip = (page - 1) * limit;
 
-    // Build where clause based on role
-    const whereClause: any = {};
+    const whereClause: Prisma.TicketWhereInput = {};
 
     if (userRole === UserRole.CLIENT) {
       whereClause.createdById = userId;
@@ -158,26 +114,20 @@ export class TicketsService {
       ];
     }
 
-      const [tickets, total] = await Promise.all([
-        this.prisma.ticket.findMany({
-          where: whereClause,
-          skip,
-          take: limit,
-          include: {
-            createdBy: { select: baseUserSelect },
-            assignedTo: { select: baseUserSelect },
-            comments: {
-              include: {
-                user: { select: baseUserSelect },
-              },
-            },
-          },
-          orderBy: {
-            createdAt: 'desc',
-          },
-        }),
-        this.prisma.ticket.count({ where: whereClause }),
-      ]);    const totalPages = Math.ceil(total / limit);
+    const [tickets, total] = await Promise.all([
+      this.prisma.ticket.findMany({
+        where: whereClause,
+        skip,
+        take: limit,
+        include: ticketInclude,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.ticket.count({ where: whereClause }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
 
     return {
       data: tickets,
@@ -195,98 +145,95 @@ export class TicketsService {
     updateTicketDto: UpdateTicketDto,
     userId: string,
     userRole: UserRole,
-  ): Promise<Ticket> {
+  ): Promise<TicketWithRelations> {
     const ticket = await this.prisma.ticket.findUnique({ 
       where: { id },
-      include: {
-        createdBy: { select: baseUserSelect },
-        assignedTo: { select: baseUserSelect },
-      },
     });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket não encontrado');
+      throw new NotFoundException(ERROR_MESSAGES.TICKET_NOT_FOUND);
     }
 
-    // Check if ticket is DONE
     if (ticket.status === TicketStatus.DONE) {
-      throw new ConflictException('Não é possível editar um ticket com status CONCLUÍDO');
+      throw new ConflictException(ERROR_MESSAGES.TICKET_ALREADY_DONE);
     }
 
-    // Check authorization
     if (userRole === UserRole.CLIENT) {
       if (ticket.createdById !== userId) {
-        throw new ForbiddenException('Você não tem permissão para editar este ticket');
+        throw new ForbiddenException(ERROR_MESSAGES.UNAUTHORIZED);
       }
-      // CLIENT can only edit title and description
+
       const { title, description } = updateTicketDto;
-      
-      const beforeData = { title: ticket.title, description: ticket.description };
-      const afterData = { title, description };
       
       const updatedTicket = await this.prisma.ticket.update({
         where: { id },
         data: { title, description },
-        include: {
-          createdBy: { select: baseUserSelect },
-          assignedTo: { select: baseUserSelect },
-          comments: {
-            include: {
-              user: { select: baseUserSelect },
-            },
-          },
-        },
+        include: ticketInclude,
       });
 
-      // Log da atualização - sem await para não bloquear resposta
       this.auditLogService.logTicketAction(
         'UPDATE',
         id,
         userId,
-        { before: beforeData, after: afterData },
+        { 
+          before: { title: ticket.title, description: ticket.description },
+          after: { title, description }
+        },
       ).catch(err => console.error('Audit log error:', err));
 
       return updatedTicket;
     }
 
-    // TECH can edit everything
-    const beforeData = {
-      title: ticket.title,
-      description: ticket.description,
-      status: ticket.status,
-      priority: ticket.priority,
-      assignedToId: ticket.assignedToId,
-    };
+    const updateData: Prisma.TicketUpdateInput = {};
 
-    const updateData: any = { ...updateTicketDto };
+    if (updateTicketDto.title !== undefined) {
+      updateData.title = updateTicketDto.title;
+    }
 
-    // Ensure assignee exists and is a TECH if provided
-    if (updateTicketDto.assignedToId) {
-      const assignee = await this.prisma.user.findUnique({ where: { id: updateTicketDto.assignedToId } });
+    if (updateTicketDto.description !== undefined) {
+      updateData.description = updateTicketDto.description;
+    }
 
-      if (!assignee) {
-        throw new NotFoundException('Usuário atribuído não encontrado');
-      }
+    if (updateTicketDto.status !== undefined) {
+      updateData.status = updateTicketDto.status;
+    }
 
-      if (assignee.role !== UserRole.TECH && assignee.role !== UserRole.SUPERVISOR) {
-        throw new ForbiddenException('Apenas usuários TECH podem ser atribuídos a tickets');
-      }
+    if (updateTicketDto.priority !== undefined) {
+      updateData.priority = updateTicketDto.priority;
+    }
 
-      // Log especial para atribuição - sem await para não bloquear resposta
-      if (ticket.assignedToId !== updateTicketDto.assignedToId) {
-        this.auditLogService.logTicketAction(
-          'ASSIGN',
-          id,
-          userId,
-          {
-            before: ticket.assignedToId,
-            after: updateTicketDto.assignedToId,
-          },
-        ).catch(err => console.error('Audit log error:', err));
+    if (updateTicketDto.assignedToId !== undefined) {
+      if (updateTicketDto.assignedToId === null) {
+        updateData.assignedTo = { disconnect: true };
+      } else {
+        const assignee = await this.prisma.user.findUnique({ 
+          where: { id: updateTicketDto.assignedToId } 
+        });
+
+        if (!assignee) {
+          throw new NotFoundException(ERROR_MESSAGES.ASSIGNEE_NOT_FOUND);
+        }
+
+        if (assignee.role !== UserRole.TECH && assignee.role !== UserRole.SUPERVISOR) {
+          throw new ForbiddenException(ERROR_MESSAGES.ASSIGNEE_MUST_BE_TECH);
+        }
+
+        updateData.assignedTo = { connect: { id: updateTicketDto.assignedToId } };
+
+        if (ticket.assignedToId !== updateTicketDto.assignedToId) {
+          this.auditLogService.logTicketAction(
+            'ASSIGN',
+            id,
+            userId,
+            {
+              before: ticket.assignedToId,
+              after: updateTicketDto.assignedToId,
+            },
+          ).catch(err => console.error('Audit log error:', err));
+        }
       }
     }
 
-    // Handle resolvedAt based on status change
     if (updateTicketDto.status) {
       if (updateTicketDto.status === TicketStatus.DONE) {
         updateData.resolvedAt = new Date();
@@ -298,24 +245,21 @@ export class TicketsService {
     const updatedTicket = await this.prisma.ticket.update({
       where: { id },
       data: updateData,
-      include: {
-        createdBy: { select: baseUserSelect },
-        assignedTo: { select: baseUserSelect },
-        comments: {
-          include: {
-            user: { select: baseUserSelect },
-          },
-        },
-      },
+      include: ticketInclude,
     });
 
-    // Log da atualização geral - sem await para não bloquear resposta
     this.auditLogService.logTicketAction(
       'UPDATE',
       id,
       userId,
       {
-        before: beforeData,
+        before: {
+          title: ticket.title,
+          description: ticket.description,
+          status: ticket.status,
+          priority: ticket.priority,
+          assignedToId: ticket.assignedToId,
+        },
         after: {
           title: updatedTicket.title,
           description: updatedTicket.description,
@@ -337,20 +281,17 @@ export class TicketsService {
     const ticket = await this.prisma.ticket.findUnique({ where: { id } });
 
     if (!ticket) {
-      throw new NotFoundException('Ticket não encontrado');
+      throw new NotFoundException(ERROR_MESSAGES.TICKET_NOT_FOUND);
     }
 
-    // Check if ticket is DONE
     if (ticket.status === TicketStatus.DONE) {
-      throw new ConflictException('Não é possível deletar um ticket com status DONE');
+      throw new ConflictException(ERROR_MESSAGES.TICKET_ALREADY_DONE);
     }
 
-    // Check authorization
     if (userRole === UserRole.CLIENT && ticket.createdById !== userId) {
-      throw new ForbiddenException('Você não tem permissão para deletar este ticket');
+      throw new ForbiddenException(ERROR_MESSAGES.UNAUTHORIZED);
     }
 
-    // Log antes de deletar
     await this.auditLogService.logTicketAction(
       'DELETE',
       id,
@@ -367,6 +308,6 @@ export class TicketsService {
 
     await this.prisma.ticket.delete({ where: { id } });
 
-    return { message: 'Ticket deleted successfully' };
+    return { message: 'Ticket deletado com sucesso' };
   }
 }
