@@ -5,6 +5,20 @@
 
 ---
 
+## 🎥 Demonstração
+
+### 📹 Screencast do Sistema
+Assista a demonstração completa do TicketFlow em funcionamento:
+
+[![Screencast TicketFlow](https://img.shields.io/badge/▶️_Assistir-Screencast-red?style=for-the-badge&logo=youtube)](https://youtu.be/9iP2jh9aITU?si=_fsHugKGfcs4ajTs)
+
+### 📚 Tutorial de Instalação
+Guia passo a passo para configurar e executar o projeto:
+
+[![Tutorial de Instalação](https://img.shields.io/badge/▶️_Assistir-Tutorial_de_Instalação-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=9iP2jh9aITU&t=330s)
+
+---
+
 ## 📋 Índice
 
 - [Visão Geral](#-visão-geral)
