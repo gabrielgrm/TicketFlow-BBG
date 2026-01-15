@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { authService } from "@/lib/auth";
 import { useToast } from "@/components/ui/use-toast";
 import { ApiError } from "@/lib/api";
@@ -51,7 +52,11 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle variant="icon" />
+      </div>
+      <div className="w-full max-w-6xl flex justify-center items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center w-full">
         {/* Left Section - About TicketFlow */}
         <div className="hidden md:flex flex-col space-y-6">
           <div>
@@ -144,6 +149,7 @@ export default function LoginPage() {
             </CardFooter>
           </form>
         </Card>
+        </div>
       </div>
 
       {/* Test Credentials Helper */}

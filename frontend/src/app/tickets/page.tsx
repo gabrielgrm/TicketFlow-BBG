@@ -157,19 +157,20 @@ export default function TicketsPage() {
 
       <main className="container mx-auto px-4 py-8">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
+          <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <CardTitle>Tickets</CardTitle>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
               {(user?.role === "TECH" || user?.role === "SUPERVISOR") && (
                 <Button
                   variant={showMyTickets ? "default" : "outline"}
                   onClick={() => setShowMyTickets(!showMyTickets)}
+                  className="w-full sm:w-auto"
                 >
                   {showMyTickets ? "Todos os Tickets" : "Meus Tickets"}
                 </Button>
               )}
-              <Link href="/tickets/new">
-                <Button>
+              <Link href="/tickets/new" className="w-full sm:w-auto">
+                <Button className="w-full">
                   <Plus className="mr-2 h-4 w-4" />
                   Novo Ticket
                 </Button>
@@ -269,7 +270,7 @@ export default function TicketsPage() {
                   </TableBody>
                 </Table>
 
-                <div className="flex items-center justify-between mt-6">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6">
                   <div className="text-sm text-muted-foreground">
                     Página {page} de {totalPages ?? 1}
                   </div>
@@ -278,6 +279,7 @@ export default function TicketsPage() {
                       variant="outline"
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
                       disabled={page === 1}
+                      className="w-full sm:w-auto"
                     >
                       Anterior
                     </Button>
@@ -285,6 +287,7 @@ export default function TicketsPage() {
                       variant="outline"
                       onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                       disabled={page === totalPages}
+                      className="w-full sm:w-auto"
                     >
                       Próxima
                     </Button>

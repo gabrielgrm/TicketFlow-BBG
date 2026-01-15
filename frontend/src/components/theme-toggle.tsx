@@ -3,8 +3,12 @@
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
+type ThemeToggleProps = {
+  variant?: "full" | "icon";
+  className?: string;
+};
 
-export function ThemeToggle() {
+export function ThemeToggle({ variant = "full", className }: ThemeToggleProps) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mounted, setMounted] = useState(false);
 
@@ -35,6 +39,24 @@ export function ThemeToggle() {
   };
 
   if (!mounted) return null;
+
+  if (variant === "icon") {
+    return (
+      <Button
+        variant="outline"
+        size="icon"
+        onClick={toggleTheme}
+        title={`Mudar para tema ${theme === "light" ? "escuro" : "claro"}`}
+        className={`rounded-full ${className ?? ""}`}
+      >
+        {theme === "light" ? (
+          <Moon className="w-4 h-4" />
+        ) : (
+          <Sun className="w-4 h-4" />
+        )}
+      </Button>
+    );
+  }
 
   return (
     <button

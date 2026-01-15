@@ -68,7 +68,15 @@ export class TicketsService {
 
     const ticket = await this.prisma.ticket.create({
       data: ticketData,
-      include: ticketInclude,
+      include: {
+        createdBy: { select: baseUserSelect },
+        assignedTo: { select: baseUserSelect },
+        comments: {
+          include: {
+            user: { select: baseUserSelect },
+          },
+        },
+      },
     });
 
     // Log da criação
@@ -85,7 +93,15 @@ export class TicketsService {
   async findById(id: string, userId: string, userRole: UserRole): Promise<Ticket> {
     const ticket = await this.prisma.ticket.findUnique({
       where: { id },
-      include: ticketInclude,
+      include: {
+        createdBy: { select: baseUserSelect },
+        assignedTo: { select: baseUserSelect },
+        comments: {
+          include: {
+            user: { select: baseUserSelect },
+          },
+        },
+      },
     });
 
     if (!ticket) {
@@ -142,23 +158,26 @@ export class TicketsService {
       ];
     }
 
-    const [tickets, total] = await Promise.all([
-      this.prisma.ticket.findMany({
-        where: whereClause,
-        skip,
-        take: limit,
-        include: {
-          createdBy: { select: baseUserSelect },
-          assignedTo: { select: baseUserSelect },
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.ticket.count({ where: whereClause }),
-    ]);
-
-    const totalPages = Math.ceil(total / limit);
+      const [tickets, total] = await Promise.all([
+        this.prisma.ticket.findMany({
+          where: whereClause,
+          skip,
+          take: limit,
+          include: {
+            createdBy: { select: baseUserSelect },
+            assignedTo: { select: baseUserSelect },
+            comments: {
+              include: {
+                user: { select: baseUserSelect },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
+        this.prisma.ticket.count({ where: whereClause }),
+      ]);    const totalPages = Math.ceil(total / limit);
 
     return {
       data: tickets,
@@ -177,7 +196,13 @@ export class TicketsService {
     userId: string,
     userRole: UserRole,
   ): Promise<Ticket> {
-    const ticket = await this.prisma.ticket.findUnique({ where: { id } });
+    const ticket = await this.prisma.ticket.findUnique({ 
+      where: { id },
+      include: {
+        createdBy: { select: baseUserSelect },
+        assignedTo: { select: baseUserSelect },
+      },
+    });
 
     if (!ticket) {
       throw new NotFoundException('Ticket não encontrado');
@@ -202,16 +227,24 @@ export class TicketsService {
       const updatedTicket = await this.prisma.ticket.update({
         where: { id },
         data: { title, description },
-        include: ticketInclude,
+        include: {
+          createdBy: { select: baseUserSelect },
+          assignedTo: { select: baseUserSelect },
+          comments: {
+            include: {
+              user: { select: baseUserSelect },
+            },
+          },
+        },
       });
 
-      // Log da atualização
-      await this.auditLogService.logTicketAction(
+      // Log da atualização - sem await para não bloquear resposta
+      this.auditLogService.logTicketAction(
         'UPDATE',
         id,
         userId,
         { before: beforeData, after: afterData },
-      );
+      ).catch(err => console.error('Audit log error:', err));
 
       return updatedTicket;
     }
@@ -239,9 +272,9 @@ export class TicketsService {
         throw new ForbiddenException('Apenas usuários TECH podem ser atribuídos a tickets');
       }
 
-      // Log especial para atribuição
+      // Log especial para atribuição - sem await para não bloquear resposta
       if (ticket.assignedToId !== updateTicketDto.assignedToId) {
-        await this.auditLogService.logTicketAction(
+        this.auditLogService.logTicketAction(
           'ASSIGN',
           id,
           userId,
@@ -249,7 +282,7 @@ export class TicketsService {
             before: ticket.assignedToId,
             after: updateTicketDto.assignedToId,
           },
-        );
+        ).catch(err => console.error('Audit log error:', err));
       }
     }
 
@@ -265,11 +298,19 @@ export class TicketsService {
     const updatedTicket = await this.prisma.ticket.update({
       where: { id },
       data: updateData,
-      include: ticketInclude,
+      include: {
+        createdBy: { select: baseUserSelect },
+        assignedTo: { select: baseUserSelect },
+        comments: {
+          include: {
+            user: { select: baseUserSelect },
+          },
+        },
+      },
     });
 
-    // Log da atualização geral
-    await this.auditLogService.logTicketAction(
+    // Log da atualização geral - sem await para não bloquear resposta
+    this.auditLogService.logTicketAction(
       'UPDATE',
       id,
       userId,
@@ -283,7 +324,7 @@ export class TicketsService {
           assignedToId: updatedTicket.assignedToId,
         },
       },
-    );
+    ).catch(err => console.error('Audit log error:', err));
 
     return updatedTicket;
   }
